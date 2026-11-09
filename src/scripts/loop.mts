@@ -911,13 +911,24 @@ async function main() {
   // Short-circuit `dispatch` before parseArgs — its flags (--plan, --parent-branch,
   // --depth, --dry-run, --json, --run-id, --config) are not registered in
   // FLAG_SPEC, and the parser would throw on them. Forward all remaining argv
-  // verbatim to dispatch.mts as a child process (run under bun).
+  // verbatim to dispatch.mts (or its bundled dist/dispatch.js sibling) as a
+  // child process (run under bun).
   const rawArgv = process.argv.slice(2);
   if (rawArgv[0] === "dispatch") {
     const { spawnSync } = await import("node:child_process");
     const { fileURLToPath } = await import("node:url");
     const thisFile = fileURLToPath(import.meta.url);
-    const dispatchCli = path.join(path.dirname(thisFile), "dispatch.mts");
+    // FEAT-037/SLICE-59: the sibling file's own extension tracks which form
+    // of this file is currently running — `dist/loop.js` (bundled, shipped
+    // to consumers) has a bundled `dist/dispatch.js` sibling, never a
+    // `dispatch.mts` one; `src/scripts/loop.mts` (dev/dogfood) has the
+    // reverse. Resolving by thisFile's own extension, instead of hardcoding
+    // `.mts`, is what lets `bun dist/loop.js dispatch ...` find its sibling
+    // at all — before this fix it always looked for `dispatch.mts` next to
+    // itself regardless of which form was running, and crashed with a
+    // module-resolution error under dist/.
+    const siblingName = thisFile.endsWith(".js") ? "dispatch.js" : "dispatch.mts";
+    const dispatchCli = path.join(path.dirname(thisFile), siblingName);
     const result = spawnSync("bun", [dispatchCli, ...rawArgv.slice(1)], {
       stdio: "inherit",
       shell: process.platform === "win32"

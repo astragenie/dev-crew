@@ -9,10 +9,13 @@
  * see docs/memory.md "FEAT-026 alternative rejected" for the record.
  *
  * Entries: every `bun "${CLAUDE_PLUGIN_ROOT}/<path>"` command in
- * hooks/hooks.json, plus the five CLI entries that are not reachable through
- * a hooks.json command. node/bash entries (the five `.mjs` hooks +
- * log_event.sh) are NOT bundled and NOT copied — they stay in place and run
- * under plain node/bash unchanged.
+ * hooks/hooks.json, plus the six CLI entries that are not reachable through
+ * a hooks.json command (the fifth, `loop.mts`, spawns `dispatch.mts` as a
+ * sibling child process for its `dispatch` subcommand — see FEAT-037/
+ * SLICE-59 — so `dispatch.mts` must bundle to `dispatch.js` alongside
+ * `loop.js`, or the bundled `loop.js` has no sibling to spawn). node/bash
+ * entries (the five `.mjs` hooks + log_event.sh) are NOT bundled and NOT
+ * copied — they stay in place and run under plain node/bash unchanged.
  *
  * `--check` rebuilds every entry to a temp dir and byte-compares against
  * the committed dist/ (after normalising CRLF -> LF and stripping the
@@ -44,6 +47,7 @@ export interface BundleEntry {
 const EXTRA_CLI_ENTRIES: ReadonlyArray<string> = [
   "crew/scripts/crew.mts",
   "src/scripts/loop.mts",
+  "src/scripts/dispatch.mts",
   "crew/scripts/report-to-pr.mts",
   "crew/scripts/prune-artifacts.mts",
   "src/scripts/watch-tick.mts"
@@ -52,6 +56,7 @@ const EXTRA_CLI_ENTRIES: ReadonlyArray<string> = [
 const CLI_OUT_NAMES: Readonly<Record<string, string>> = {
   "crew/scripts/crew.mts": "crew.js",
   "src/scripts/loop.mts": "loop.js",
+  "src/scripts/dispatch.mts": "dispatch.js",
   "crew/scripts/report-to-pr.mts": "report-to-pr.js",
   "crew/scripts/prune-artifacts.mts": "prune-artifacts.js",
   "src/scripts/watch-tick.mts": "watch-tick.js"

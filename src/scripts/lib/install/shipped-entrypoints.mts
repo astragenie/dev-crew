@@ -157,8 +157,17 @@ async function listTopLevelMarkdownFiles(dirPath: string): Promise<string[]> {
  * in the TOP-LEVEL `*.md` files of `commands/` and `agents/` (never
  * recursing into `agents/3rdparty/` or similar — matches the literal
  * `commands/*.md` / `agents/*.md` globs from the feature description),
- * deduped by file + first arg so the CLI entry list tracks a future dist/
- * path rewrite automatically instead of a hand-curated subcommand list.
+ * deduped by file + its first TWO args so the CLI entry list tracks a future
+ * dist/ path rewrite automatically instead of a hand-curated subcommand
+ * list. FEAT-037/SLICE-59: a single first arg under-dedupes a subcommand
+ * group whose first arg is always the same group name and whose second arg
+ * is the real verb — e.g. `dispatch prepare` and `dispatch finalize` both
+ * had first arg `"dispatch"` and collapsed onto one label, hiding that
+ * `dispatch finalize` crashes exactly like `dispatch prepare` does/did
+ * (review B of SLICE-56 flagged this as a scanner gap). Keying on the first
+ * two args keeps a single-arg invocation's key unchanged (its second "arg"
+ * is just the empty string) while giving two-level subcommands their own
+ * entry.
  */
 export async function listMarkdownCliEntrypoints(pluginRoot: string): Promise<ShippedEntrypoint[]> {
   const files = [
@@ -180,8 +189,7 @@ export async function listMarkdownCliEntrypoints(pluginRoot: string): Promise<Sh
         .split(/\s+/)
         .map(cleanToken)
         .filter((token) => token.length > 0);
-      const firstArg = args[0] ?? "";
-      const dedupeKey = `${file}::${firstArg}`;
+      const dedupeKey = `${file}::${args.slice(0, 2).join(" ")}`;
       if (seen.has(dedupeKey)) continue;
       seen.add(dedupeKey);
       entries.push({ kind: "cli", runtime: "bun", file, args });
