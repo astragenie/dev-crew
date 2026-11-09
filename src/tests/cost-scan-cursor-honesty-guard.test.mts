@@ -26,29 +26,68 @@
 // (`crew/scripts/lib/cost-hygiene/cost-slice-handler.mts`, imported by
 // crew-bridge.mts under its repo-convention `.mjs` specifier) via
 // `bun:test`'s `mock.module` — the lowest seam that still exercises the
-// real `tryWriteCostReport` cursor-gate logic end to end. `mock.module` is
-// file-scoped in Bun's test runner (verified empirically: a module mocked
-// in one test file is unaffected in sibling files run in the same `bun
-// test a b c` invocation), so this does not leak into other suites that
-// exercise the real costSliceHandler (e.g. cost-scan-window-regression.test.mts).
+// real `tryWriteCostReport` cursor-gate logic end to end.
+//
+// Serial-run pollution (post-merge audit fix): `mock.module` registers a
+// process-wide override on this Bun version (1.3.14); it is NOT file-scoped
+// — that only looked true under `bun test --parallel`, where Bun isolates
+// each test file in its own worker, hiding the shared-process effect. Under
+// a serial run (CI, or `bun test src/tests/` without `--parallel`) two
+// separate leaks were confirmed by bisection:
+//
+// 1. `crew-bridge.mjs` (the module under test, imported here via its
+//    repo-convention dynamic `await import(...)`) is a PROCESS-WIDE
+//    singleton: Bun evaluates its module body exactly once, and its
+//    internal static `import { costSliceHandler } from
+//    "cost-slice-handler.mjs"` binds, once and permanently, to whichever
+//    `costSliceHandler` was registered at THAT evaluation moment — a later
+//    `mock.module` call for the same path cannot retroactively rebind an
+//    already-evaluated static importer (verified empirically: instrumenting
+//    crew-bridge.mts showed its module body runs exactly once per Module
+//    Record, and a later, successful mock restore had zero effect on calls
+//    already routed through that first-evaluated Record). Any sibling file
+//    that reaches the real, non-busted `crew-bridge.mjs` via a plain static
+//    top-level import (cost-scan-window-regression.test.mts,
+//    cost-project-slugify.test.mts) shares that SAME singleton — if this
+//    file's mock happened to be active when THAT shared singleton was first
+//    evaluated (a real, confirmed race in a serial run), every later caller
+//    through it, including the sibling file's own calls, keeps getting this
+//    file's fake forever. The fix: this file imports `crew-bridge.mjs`
+//    through a query-string-busted specifier (`?honesty-guard-isolated=...`)
+//    so it gets its OWN private Module Record, and never touches/evaluates
+//    the shared, non-busted singleton that other files depend on.
+//
+// 2. Restoring the mock via `mock.module(costSliceHandlerPath, () =>
+//    realModule)`, passing back the EXACT namespace object captured by an
+//    `await import(...)` taken before any mocking, is silently a no-op on
+//    this Bun version — subsequent plain imports keep getting the most
+//    recent FAKE factory's result, not the "restored" real one (verified
+//    empirically). A spread COPY of that namespace object (`{ ...realModule
+//    }`, a structurally-identical but reference-DISTINCT plain object)
+//    does not trigger whatever internal check skips the raw-reference case,
+//    and genuinely restores the real `costSliceHandler` for subsequent
+//    resolutions. The snapshot is taken once, before the mock is ever
+//    registered, and reused for the restore in `afterAll`.
+//
+// Combining both: this file's own `crew-bridge.mjs` copy is isolated via
+// cache-busting (so its tests see the fake without ever touching the
+// shared singleton), and `cost-slice-handler.mjs`'s shared registry entry
+// is correctly restored to a real-behaving spread snapshot in `afterAll` —
+// so whichever sibling file first evaluates the shared `crew-bridge.mjs`
+// singleton (whenever that happens to occur), it resolves to the real
+// `costSliceHandler`, not this file's fake.
 //
 // A single `mock.module` call is registered once, with its factory closing
 // over a mutable `handlerMode` switch the tests flip before each call —
 // calling `mock.module` a second time for the SAME path before any test
-// body runs (both top-level dynamic imports resolve before bun's test
-// runner starts executing test() bodies) was found empirically to lose the
-// first mock entirely, so one mock + a shared mutable switch is used
-// instead of two separate `mock.module` registrations.
-//
-// The mock MUST be registered before crew-bridge.mjs's own static import
-// chain pulls in the real cost-slice-handler module, so this file uses a
-// dynamic `await import(...)` for the functions under test instead of a
-// top-level static import.
+// body runs was found empirically to lose the first mock entirely, so one
+// mock + a shared mutable switch is used instead of two separate
+// `mock.module` registrations.
 
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { test, mock } from "bun:test";
+import { test, mock, afterAll } from "bun:test";
 import assert from "node:assert/strict";
 
 const costSliceHandlerPath = path.join(
@@ -63,6 +102,13 @@ const costSliceHandlerPath = path.join(
 );
 
 let handlerMode: "refuse" | "succeed" = "refuse";
+
+// Captured BEFORE `mock.module` below replaces the registry entry. A spread
+// COPY (not the raw namespace object — see the file-header comment on why
+// that distinction matters on this Bun version) is what `afterAll` uses to
+// restore the real module.
+const realCostSliceHandlerModule = await import(costSliceHandlerPath);
+const realCostSliceHandlerSnapshot = { ...realCostSliceHandlerModule };
 
 mock.module(costSliceHandlerPath, () => ({
   costSliceHandler: async () =>
@@ -79,7 +125,18 @@ mock.module(costSliceHandlerPath, () => ({
       : { path: "/irrelevant/fake-report.md", kind: "cost-report-slice" }
 }));
 
-const { tryWriteCostReport } = await import("../scripts/lib/slice-linker/crew-bridge.mjs");
+afterAll(() => {
+  mock.module(costSliceHandlerPath, () => realCostSliceHandlerSnapshot);
+});
+
+// Cache-busted so this file gets its OWN private `crew-bridge.mjs` Module
+// Record instead of sharing the process-wide singleton that
+// cost-scan-window-regression.test.mts / cost-project-slugify.test.mts
+// import via a plain static specifier — see the file-header comment, leak
+// #1.
+const { tryWriteCostReport } = await import(
+  `../scripts/lib/slice-linker/crew-bridge.mjs?honesty-guard-isolated=${Date.now()}`
+);
 const { readCostScanCursor, writeCostScanCursor } = await import(
   "../scripts/lib/slice-linker/cost-scan-cursor.mjs"
 );
