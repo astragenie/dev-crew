@@ -119,6 +119,7 @@ jobs:
     if: ${{ needs.changes.outputs.code == 'true' }}
     uses: ./.github/workflows/reusable-plugin-ci.yml
     with:
+      bun-version-file: .bun-version
       install-cmd: |
         bun --version
         bun install --frozen-lockfile
@@ -180,6 +181,17 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+      - name: Install pinned Bun (job-local, no shared tool cache)
+        shell: bash
+        run: |
+          # Runner image Bun drifts (1.3.14 -> 1.4.4 on 2026-11-09) and
+          # build-dist --check refuses a version other than .bun-version.
+          # Install the pinned version into $RUNNER_TEMP so concurrent jobs on
+          # the shared host never race one tool cache (astragenie/devops#64).
+          v="$(tr -d '[:space:]' < .bun-version)"
+          curl -fsSL https://bun.sh/install | BUN_INSTALL="$RUNNER_TEMP/bun" bash -s "bun-v$v" >/dev/null
+          echo "$RUNNER_TEMP/bun/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/bun/bin/bun" --version
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -274,6 +286,17 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
+      - name: Install pinned Bun (job-local, no shared tool cache)
+        shell: bash
+        run: |
+          # Runner image Bun drifts (1.3.14 -> 1.4.4 on 2026-11-09) and
+          # build-dist --check refuses a version other than .bun-version.
+          # Install the pinned version into $RUNNER_TEMP so concurrent jobs on
+          # the shared host never race one tool cache (astragenie/devops#64).
+          v="$(tr -d '[:space:]' < .bun-version)"
+          curl -fsSL https://bun.sh/install | BUN_INSTALL="$RUNNER_TEMP/bun" bash -s "bun-v$v" >/dev/null
+          echo "$RUNNER_TEMP/bun/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/bun/bin/bun" --version
 
       - name: Install dependencies
         run: cd crew && bun install --frozen-lockfile
@@ -295,6 +318,17 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v5
+      - name: Install pinned Bun (job-local, no shared tool cache)
+        shell: bash
+        run: |
+          # Runner image Bun drifts (1.3.14 -> 1.4.4 on 2026-11-09) and
+          # build-dist --check refuses a version other than .bun-version.
+          # Install the pinned version into $RUNNER_TEMP so concurrent jobs on
+          # the shared host never race one tool cache (astragenie/devops#64).
+          v="$(tr -d '[:space:]' < .bun-version)"
+          curl -fsSL https://bun.sh/install | BUN_INSTALL="$RUNNER_TEMP/bun" bash -s "bun-v$v" >/dev/null
+          echo "$RUNNER_TEMP/bun/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/bun/bin/bun" --version
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
