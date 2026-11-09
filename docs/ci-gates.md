@@ -250,6 +250,11 @@ every push/PR):**
 
 - **`fast-gate`** runs gates 1–41 (installs, all validators, tsc, biome).
   This is the required status check.
+  Implemented by the vendored local reusable workflow
+  `.github/workflows/reusable-plugin-ci.yml` (`uses: ./.github/workflows/...`),
+  copied from `astragenie/common@v1` on 2026-11-08: GitHub refuses to resolve a
+  reusable workflow in a private repo from a public caller ("workflow was not
+  found", zero jobs), and `dev-crew` is public. Keep it in sync by hand.
 - **`slow-tests`** runs gate 42 (root suite, retried once on a 480s
   per-attempt timeout) — kept as its own job (not the reusable-workflow
   wrapper) because it needs a job-level timeout the reusable workflow's

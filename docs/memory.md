@@ -57,6 +57,21 @@ programmatically:
   matching install command. Post-cutover (FEAT-006) these collapse to a
   single `/devcrew:install`-owned block — not yet done as of this entry.
 
+## CI reusable workflow is vendored (public caller, private callee)
+
+`ci.yml`'s `fast-gate` job used `astragenie/common/.github/workflows/reusable-plugin-ci.yml@v1`.
+Since `dev-crew` became public, every push run failed at parse time with zero
+jobs: "error parsing called workflow ... workflow was not found" — GitHub does
+not let a public repo call a reusable workflow that lives in a private repo,
+whatever the org access policy says (checked 2026-11-08: policy
+`organization`, tag `v1` = 1ed4426d, file present, still refused). Fix: the
+workflow is vendored at `.github/workflows/reusable-plugin-ci.yml` and called
+as `uses: ./.github/workflows/reusable-plugin-ci.yml`. Upstream changes to
+`common`'s copy do not propagate; diff by hand when `common` bumps `v1`.
+Runners are org-level (`astragenie-runner-runner-gcp-c-*`, label
+`self-hosted`, runner group allows public repos); repo-level runner list is
+empty by design.
+
 ## Known path drift (found during 2026-07-21 agentic-setup audit)
 
 - **`CLAUDE.md`'s installed runner:start block "First action" line** reads

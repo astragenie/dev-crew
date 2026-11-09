@@ -117,7 +117,7 @@ jobs:
   fast-gate:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
-    uses: astragenie/common/.github/workflows/reusable-plugin-ci.yml@v1
+    uses: ./.github/workflows/reusable-plugin-ci.yml
     with:
       install-cmd: |
         bun --version

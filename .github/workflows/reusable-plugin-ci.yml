@@ -1,0 +1,233 @@
+# Vendored from astragenie/common/.github/workflows/reusable-plugin-ci.yml@v1
+# (tag commit 1ed4426d, 2026-07-22). dev-crew is a PUBLIC repo and GitHub
+# refuses to resolve a reusable workflow that lives in a PRIVATE repo from a
+# public caller ("workflow was not found", every run since 2026-11-08 failed
+# at parse time with zero jobs). Called locally from ci.yml as
+#   uses: ./.github/workflows/reusable-plugin-ci.yml
+# Keep in sync with upstream by hand; see docs/memory.md "CI reusable workflow".
+# Reusable workflow — Claude Code plugin CI (bun + node validators + cross-OS matrix)
+#
+# Designed for the astragenie plugin shape:
+#   - bun + node 22 toolchain
+#   - per-plugin list of `node ./scripts/validate-*.ts` integrity checks
+#   - bun-script lint/format/typecheck/test pass
+#   - linux-only post steps (e.g. e2e smoke, browser tests)
+#   - self-hosted fleet by default (fleet policy: no GitHub-hosted runners)
+#
+# Why this exists (FEAT — 2026-06-24): every plugin repo (dev-team,
+# runner-plugin, hero-crew, loop, astramemory-plugin) hand-rolled an
+# identical-shape `test.yml` and they drifted independently. A single
+# breakage now requires 5× the work to fix and risks copy-paste errors.
+# This workflow centralizes the toolchain bootstrap + matrix while leaving
+# the validator list + bun command list per-plugin.
+#
+# Caller example (typical plugin):
+#
+#   name: test
+#   on:
+#     pull_request:
+#     push:
+#       branches: [main]
+#
+#   jobs:
+#     test:
+#       uses: astragenie/common/.github/workflows/reusable-plugin-ci.yml@main
+#       with:
+#         validators: |
+#           node ./scripts/validate-manifests.ts
+#           node ./scripts/validate-skills.ts
+#           node ./scripts/validate-agents.ts
+#           node ./scripts/validate-workflows.ts
+#         bun-commands: |
+#           bun run lint
+#           bun run format:check
+#           bun run typecheck
+#           bun run test
+#         linux-only-commands: |
+#           node ./scripts/e2e-smoke.ts
+#
+# Caller example (light plugin — astramemory-plugin shape, node --test only):
+#
+#     test:
+#       uses: astragenie/common/.github/workflows/reusable-plugin-ci.yml@main
+#       with:
+#         install-cmd: 'npm ci'
+#         bun-commands: |
+#           node --test tests/*.test.mjs
+#
+# Notes
+# -----
+# 1. `validators`, `bun-commands`, `linux-only-commands` are each rendered as
+#    one bash step that runs each line as a separate command with `set -e`.
+#    Trade-off: you lose per-validator GH-UI step rows in exchange for not
+#    forcing every caller to declare an opaque list-of-steps input.
+# 2. Use `continue-on-error-validators` to flip a soft-fail mode while
+#    cleaning up a validator backlog (mirrors reusable-frontend-lint).
+# 3. Bun and Node are baked into the self-hosted runner image (see
+#    astragenie/devops#64) — no setup-bun / setup-node steps. setup-bun's
+#    cache-restore/exec race caused intermittent `spawn ETXTBSY` on the
+#    shared runner host, and setup-node races the shared tool cache the
+#    same way. Callers must run on the self-hosted fleet.
+
+name: Reusable — plugin CI
+
+on:
+  workflow_call:
+    inputs:
+      os-matrix:
+        description: 'JSON array of runner OS labels for the matrix.'
+        type: string
+        default: '["self-hosted"]'
+      install-cmd:
+        description: |
+          Dependency install command. Default covers plugins that mix npm
+          tooling (validators) with bun (lint/test). Set to just `bun install
+          --frozen-lockfile` if the plugin is pure-bun. Pass empty string ('')
+          to skip the install step entirely (plugins with zero deps).
+        type: string
+        default: 'npm ci'
+      validators:
+        description: |
+          Multi-line list of must-pass validator commands (one per line). Each
+          line is executed as its own command under `set -euo pipefail`.
+          Commonly used for `node ./scripts/validate-*.ts` integrity checks.
+        type: string
+        default: ''
+      advisory-validators:
+        description: |
+          Multi-line list of advisory validator commands. Same syntax as
+          `validators` but the whole step uses continue-on-error: true so
+          failures show as red in the GH UI without blocking the workflow.
+          Use for validators that are still stabilizing or that depend on
+          out-of-repo state.
+        type: string
+        default: ''
+      bun-commands:
+        description: |
+          Multi-line list of must-pass post-validator commands. Typically
+          lint / format:check / typecheck / test invocations. Each line runs
+          as a separate command.
+        type: string
+        default: ''
+      advisory-bun-commands:
+        description: |
+          Multi-line list of advisory bun commands. Same syntax as
+          `bun-commands` but the whole step uses continue-on-error: true.
+          Use for checks that should warn but not block (typegraph drift,
+          deprecated-API audit, etc.).
+        type: string
+        default: ''
+      linux-only-commands:
+        description: |
+          Multi-line list of commands that should only run on Linux runners
+          (e.g. e2e smoke, Playwright browser jobs).
+        type: string
+        default: ''
+      continue-on-error-validators:
+        description: 'Soft-fail the must-pass validators step (use while cleaning a backlog).'
+        type: boolean
+        default: false
+      working-directory:
+        description: 'Run all steps from this subdirectory (default: repo root).'
+        type: string
+        default: '.'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.os-matrix) }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v5
+
+      # Bun + Node 22 are baked into the self-hosted runner image (devops#64) —
+      # setup-bun/setup-node here raced the shared tool cache (spawn ETXTBSY).
+      - name: Install dependencies
+        if: ${{ inputs.install-cmd != '' }}
+        shell: bash
+        env:
+          INSTALL_CMD: ${{ inputs.install-cmd }}
+        run: eval "$INSTALL_CMD"
+
+      - name: Validators (must pass)
+        if: ${{ inputs.validators != '' }}
+        continue-on-error: ${{ inputs.continue-on-error-validators }}
+        shell: bash
+        env:
+          VALIDATOR_BLOCK: ${{ inputs.validators }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$VALIDATOR_BLOCK" | while IFS= read -r cmd; do
+            [ -z "$cmd" ] && continue
+            echo "::group::$cmd"
+            eval "$cmd"
+            echo "::endgroup::"
+          done
+
+      - name: Validators (advisory)
+        if: ${{ inputs.advisory-validators != '' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          VALIDATOR_BLOCK: ${{ inputs.advisory-validators }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$VALIDATOR_BLOCK" | while IFS= read -r cmd; do
+            [ -z "$cmd" ] && continue
+            echo "::group::$cmd"
+            eval "$cmd"
+            echo "::endgroup::"
+          done
+
+      - name: Bun commands (lint / format / typecheck / test)
+        if: ${{ inputs.bun-commands != '' }}
+        shell: bash
+        env:
+          BUN_CMD_BLOCK: ${{ inputs.bun-commands }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$BUN_CMD_BLOCK" | while IFS= read -r cmd; do
+            [ -z "$cmd" ] && continue
+            echo "::group::$cmd"
+            eval "$cmd"
+            echo "::endgroup::"
+          done
+
+      - name: Bun commands (advisory)
+        if: ${{ inputs.advisory-bun-commands != '' }}
+        continue-on-error: true
+        shell: bash
+        env:
+          BUN_CMD_BLOCK: ${{ inputs.advisory-bun-commands }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$BUN_CMD_BLOCK" | while IFS= read -r cmd; do
+            [ -z "$cmd" ] && continue
+            echo "::group::$cmd"
+            eval "$cmd"
+            echo "::endgroup::"
+          done
+
+      - name: Linux-only commands (e2e smoke, browser jobs)
+        if: ${{ inputs.linux-only-commands != '' && runner.os == 'Linux' }}
+        shell: bash
+        env:
+          LINUX_ONLY_BLOCK: ${{ inputs.linux-only-commands }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$LINUX_ONLY_BLOCK" | while IFS= read -r cmd; do
+            [ -z "$cmd" ] && continue
+            echo "::group::$cmd"
+            eval "$cmd"
+            echo "::endgroup::"
+          done
