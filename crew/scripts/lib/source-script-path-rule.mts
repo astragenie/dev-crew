@@ -19,13 +19,22 @@
 //
 // "Invocation form" (vs. a plain prose mention, which passes):
 //   - any occurrence of one of the five paths on a line inside a fenced
-//     code block (``` ... ```), regardless of what precedes it on that
-//     line; OR
-//   - outside a fence, a line whose EFFECTIVE content (after stripping a
-//     leading Markdown list/number marker, e.g. "1. " or "- ") is
-//     entirely ONE inline-code span (`` `...` ``) whose content either
-//       - starts with `bun `, `node `, or `bunx ` immediately followed by
-//         one of the five paths, or
+//     code block (``` ... ``` or ~~~ ... ~~~ — CommonMark: a fence opened
+//     with one character is only closed by a matching line of the SAME
+//     character; a stray ~~~ inside an open ``` fence — or vice versa — is
+//     ordinary fence content, not a close), regardless of what precedes
+//     it on that line; OR
+//   - outside a fence, a CommonMark indented code block line (4+ leading
+//     spaces, or a leading tab) whose content (after stripping just that
+//     indent) is a runner-prefixed or `${CLAUDE_PLUGIN_ROOT}/`-wrapped
+//     invocation per the same prefix check as the inline-code-span case
+//     below; OR
+//   - outside a fence and not indented, a line whose EFFECTIVE content
+//     (after stripping a leading Markdown list/number marker, e.g. "1. "
+//     or "- ") is entirely ONE inline-code span (`` `...` ``) whose
+//     content either
+//       - starts with `bun `, `bun.exe `, `node `, or `bunx ` immediately
+//         followed by one of the five paths, or
 //       - wraps the path as `${CLAUDE_PLUGIN_ROOT}/<path>` (optionally
 //         inside quotes).
 // A path mentioned mid-sentence in prose — even inside inline backticks,
@@ -56,13 +65,19 @@ function escapeRegExp(value: string): string {
 const PATH_RE = new RegExp(`(${SOURCE_SCRIPT_PATHS.map(escapeRegExp).join("|")})`);
 
 // "before" text ends with a runner word + whitespace, e.g. "bun ", "node ",
-// optionally preceded by a quote/paren/start-of-string.
-const RUNNER_PREFIX_RE = /(?:^|[\s"'(])(?:bun|node|bunx)\s+$/;
+// "bun.exe ", optionally preceded by a quote/paren/start-of-string.
+const RUNNER_PREFIX_RE = /(?:^|[\s"'(])(?:bun(?:\.exe)?|node|bunx)\s+$/;
 // "before" text ends with the plugin-root wrap, e.g. `${CLAUDE_PLUGIN_ROOT}/`.
 const PLUGIN_ROOT_WRAP_RE = /\$\{CLAUDE_PLUGIN_ROOT\}\/$/;
 
 const LIST_MARKER_RE = /^\s*(?:[-*+]|\d+\.)\s*/;
 const WHOLE_LINE_CODE_SPAN_RE = /^`([^`]*)`$/;
+// Opening/closing fence marker: 3+ backticks or 3+ tildes, optionally
+// indented up to 3 spaces (CommonMark). Capture group 1's first character
+// is the fence type ("`" or "~") used to require a matching close.
+const FENCE_RE = /^\s{0,3}(`{3,}|~{3,})/;
+// CommonMark indented code block: 4+ leading spaces, or a leading tab.
+const INDENTED_CODE_RE = /^(?: {4,}|\t)/;
 
 function stripListMarker(line: string): string {
   return line.replace(LIST_MARKER_RE, "").trim();
@@ -84,30 +99,79 @@ function matchedPathInInvocationForm(span: string): string | null {
   return null;
 }
 
+/** Returns the fence type ("`" or "~") this line opens/closes with, else null. */
+function fenceMarkerOf(line: string): string | null {
+  const match = FENCE_RE.exec(line);
+  return match ? ((match[1] as string)[0] as string) : null;
+}
+
+/** Scans one line already known to be inside an open fence; pushes a finding on a bare path hit. */
+function scanFencedLine(
+  line: string,
+  lineNumber: number,
+  findings: SourceScriptPathFinding[]
+): void {
+  const match = PATH_RE.exec(line);
+  if (match) {
+    findings.push({ line: lineNumber, path: match[1] as string, snippet: line.trim() });
+  }
+}
+
+/** Scans one non-fenced, 4-space/tab-indented line for a runner-prefixed invocation. */
+function scanIndentedCodeLine(
+  line: string,
+  lineNumber: number,
+  findings: SourceScriptPathFinding[]
+): void {
+  const matchedPath = matchedPathInInvocationForm(line.trimStart());
+  if (matchedPath) {
+    findings.push({ line: lineNumber, path: matchedPath, snippet: line.trim() });
+  }
+}
+
+/** Scans one non-fenced, non-indented line for a whole-line inline-code-span invocation. */
+function scanInlineCodeSpanLine(
+  line: string,
+  lineNumber: number,
+  findings: SourceScriptPathFinding[]
+): void {
+  const span = wholeLineCodeSpan(stripListMarker(line));
+  if (span === null) return;
+  const matchedPath = matchedPathInInvocationForm(span);
+  if (matchedPath) {
+    findings.push({ line: lineNumber, path: matchedPath, snippet: span });
+  }
+}
+
 /** Scans Markdown `content` for invocation-form references to the five legacy source-script paths. */
 export function findSourceScriptPathFindings(content: string): SourceScriptPathFinding[] {
   const findings: SourceScriptPathFinding[] = [];
   const lines = content.split("\n");
-  let inFence = false;
+  let fenceChar: string | null = null;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? "";
-    if (/^\s*```/.test(line)) {
-      inFence = !inFence;
-      continue;
-    }
-    if (inFence) {
-      const match = PATH_RE.exec(line);
-      if (match) {
-        findings.push({ line: i + 1, path: match[1] as string, snippet: line.trim() });
+    const lineNumber = i + 1;
+    const fenceMarker = fenceMarkerOf(line);
+    if (fenceMarker !== null) {
+      if (fenceChar === null) {
+        fenceChar = fenceMarker;
+      } else if (fenceMarker === fenceChar) {
+        fenceChar = null;
       }
+      // A stray marker of the OTHER fence character inside an open fence
+      // doesn't close it — it's ordinary fence content (no path on a bare
+      // fence-marker line, so nothing to scan either way).
       continue;
     }
-    const span = wholeLineCodeSpan(stripListMarker(line));
-    if (span === null) continue;
-    const matchedPath = matchedPathInInvocationForm(span);
-    if (matchedPath) {
-      findings.push({ line: i + 1, path: matchedPath, snippet: span });
+    if (fenceChar !== null) {
+      scanFencedLine(line, lineNumber, findings);
+      continue;
     }
+    if (INDENTED_CODE_RE.test(line)) {
+      scanIndentedCodeLine(line, lineNumber, findings);
+      continue;
+    }
+    scanInlineCodeSpanLine(line, lineNumber, findings);
   }
   return findings;
 }

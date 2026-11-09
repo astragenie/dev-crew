@@ -94,3 +94,63 @@ test("no-source-script-path: the correct dist/ form passes", async () => {
   const result = await validateAgents(root);
   expect(result.ok, `unexpected errors: ${result.errors.join("; ")}`).toBe(true);
 });
+
+test("no-source-script-path: a ~~~ fenced invocation of crew/scripts/crew.mts fails", async () => {
+  const body = `${FRONTMATTER}
+~~~bash
+bun crew/scripts/crew.mts audit --repo "$PWD"
+~~~
+`;
+  const root = await makeAgentsDir({ "builder.md": body });
+  const result = await validateAgents(root);
+  expect(result.ok).toBe(false);
+  const hit = result.errors.find((e) => /no-source-script-path/.test(e));
+  expect(
+    hit,
+    `expected a no-source-script-path error, got: ${result.errors.join("; ")}`
+  ).toBeTruthy();
+});
+
+test("no-source-script-path: a stray ~~~ inside an open ``` fence does not close it — the invocation after it still fails", async () => {
+  const body = `${FRONTMATTER}
+\`\`\`bash
+~~~
+bun crew/scripts/crew.mts audit --repo "$PWD"
+\`\`\`
+`;
+  const root = await makeAgentsDir({ "builder.md": body });
+  const result = await validateAgents(root);
+  expect(result.ok).toBe(false);
+  const hit = result.errors.find((e) => /no-source-script-path/.test(e));
+  expect(
+    hit,
+    `expected a no-source-script-path error, got: ${result.errors.join("; ")}`
+  ).toBeTruthy();
+});
+
+test("no-source-script-path: a 4-space-indented bare invocation of src/scripts/loop.mts fails", async () => {
+  const invocationLine =
+    '    bun src/scripts/loop.mts config get loop.marathonRunner --repo "$PWD"';
+  const body = `${FRONTMATTER}\n${invocationLine}\n`;
+  const root = await makeAgentsDir({ "builder.md": body });
+  const result = await validateAgents(root);
+  expect(result.ok).toBe(false);
+  const hit = result.errors.find((e) => /no-source-script-path/.test(e));
+  expect(
+    hit,
+    `expected a no-source-script-path error, got: ${result.errors.join("; ")}`
+  ).toBeTruthy();
+});
+
+test("no-source-script-path: a `bun.exe` invocation of crew/scripts/crew.mts fails", async () => {
+  const invocationLine = '2. `bun.exe crew/scripts/crew.mts audit --repo "$PWD"`';
+  const body = `${FRONTMATTER}\n1. First run the audit:\n${invocationLine}\n`;
+  const root = await makeAgentsDir({ "builder.md": body });
+  const result = await validateAgents(root);
+  expect(result.ok).toBe(false);
+  const hit = result.errors.find((e) => /no-source-script-path/.test(e));
+  expect(
+    hit,
+    `expected a no-source-script-path error, got: ${result.errors.join("; ")}`
+  ).toBeTruthy();
+});

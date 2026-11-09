@@ -110,6 +110,59 @@ test("agents/*.md is out of scope for this sibling check (owned by validate-agen
   assert.equal(findings.length, 0);
 });
 
+test("a ~~~ fenced invocation of crew/scripts/crew.mts fails", async () => {
+  const root = await mkTmp();
+  await writeFile(
+    root,
+    "commands/adopt.md",
+    '# Adopt\n\n~~~bash\nbun crew/scripts/crew.mts audit --repo "$PWD"\n~~~\n'
+  );
+
+  const findings = await findSourceScriptPathRefFindings(root);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0]?.file, "commands/adopt.md");
+  assert.equal(findings[0]?.path, "crew/scripts/crew.mts");
+});
+
+test("a stray ~~~ inside an open ``` fence does not close it — the invocation after it still fails", async () => {
+  const root = await mkTmp();
+  await writeFile(
+    root,
+    "commands/adopt.md",
+    '# Adopt\n\n```bash\n~~~\nbun crew/scripts/crew.mts audit --repo "$PWD"\n```\n'
+  );
+
+  const findings = await findSourceScriptPathRefFindings(root);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0]?.file, "commands/adopt.md");
+  assert.equal(findings[0]?.path, "crew/scripts/crew.mts");
+});
+
+test("a 4-space-indented bare invocation of src/scripts/loop.mts fails", async () => {
+  const root = await mkTmp();
+  await writeFile(
+    root,
+    "skills/triage/SKILL.md",
+    "# Triage\n\n" + '    bun src/scripts/loop.mts backlog triage --repo "$PWD"\n'
+  );
+
+  const findings = await findSourceScriptPathRefFindings(root);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0]?.file, "skills/triage/SKILL.md");
+  assert.equal(findings[0]?.path, "src/scripts/loop.mts");
+});
+
+test("a `bun.exe` invocation of crew/scripts/crew.mts fails", async () => {
+  const root = await mkTmp();
+  const invocationLine = '1. `bun.exe crew/scripts/crew.mts audit --repo "$PWD"`';
+  await writeFile(root, "commands/adopt.md", `# Adopt\n\n${invocationLine}\n`);
+
+  const findings = await findSourceScriptPathRefFindings(root);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0]?.file, "commands/adopt.md");
+  assert.equal(findings[0]?.path, "crew/scripts/crew.mts");
+});
+
 test("real tree: findSourceScriptPathRefFindings() passes clean against the live repo", async () => {
   const findings = await findSourceScriptPathRefFindings(REPO_ROOT);
   assert.equal(
