@@ -1,16 +1,21 @@
-// Consumer-install smoke test (FEAT-022/SLICE-47, audit #41). RED FIRST and
-// meant to STAY red on this branch: the marketplace cache a consumer
-// actually installs ships no node_modules for crew/ (root bun.lock declares
-// workspaces; crew/ carries deps the root package.json doesn't), so every
-// crew/ entry importing @astragenie/plugin-std, zod, or yaml crashes. This
-// is the permanent gate that proves it, scoped to this file only (gate 42,
-// slow-tests) so it never blocks the fast merge gate.
+// Consumer-install smoke test (FEAT-022/SLICE-47, audit #41). Originally RED
+// FIRST and designed to stay red while the marketplace cache a consumer
+// actually installs shipped no node_modules for crew/ (root bun.lock
+// declares workspaces; crew/ carries deps the root package.json doesn't), so
+// every crew/ entry importing @astragenie/plugin-std, zod, or yaml crashed.
+// FEAT-026 (self-contained dist/ bundles) and FEAT-037/SLICE-55..59 (the W2.5
+// dist/ path rewrite across commands/*.md, agents/*.md, and the loop.mts
+// dispatch-sibling bundling gap) drained every known-broken entry.
+// EXPECTED_FAIL is now the empty set and this is a permanent BLOCKING gate
+// (gate 42, slow-tests, run separately from the fast merge gate so it never
+// blocks it on wall-clock time) — a real module-resolution regression in any
+// shipped hook or CLI entry fails CI, full stop, same as any other gate.
 //
-// EXPECTED_FAIL below is a ratchet, not a todo list: it is seeded with
-// exactly what this tree observably crashes on today. Do NOT "fix" entries
-// by editing this set when the underlying crash is still real — only remove
-// an entry once its actual root cause (FEAT-026 self-contained bundles, or
-// the later dist/ path rewrite for the CLI entries) has landed.
+// EXPECTED_FAIL stays declared as a ratchet mechanism, not a todo list: if a
+// future entry genuinely needs a temporary documented exception, it is added
+// here with a reason and a tracked follow-up, never used to paper over a
+// live crash. Do NOT add an entry to "fix" this suite by hiding a real
+// crash — fix the crash.
 //
 // Known gap (documented, not fixed here): `crew/scripts/crew.mts
 // show-workflow-state` is NOT currently invoked via `bun
@@ -107,26 +112,31 @@ afterAll(async () => {
 // prepare` / `dispatch finalize` bash blocks used the bare, unquoted
 // `bun src/scripts/loop.mts` form, which CLI_LINE_RE (only matches the
 // quoted `bun "${CLAUDE_PLUGIN_ROOT}/<path>"` form) never scanned -- so this
-// entry was invisible to the ratchet before this slice. Rewriting it to the
+// entry was invisible to the ratchet before that slice. Rewriting it to the
 // canonical quoted dist/loop.js form (required by AC-3's zero-occurrence
-// grep) makes it visible for the first time, and it genuinely crashes:
-// loop.mts's `dispatch` subcommand (src/scripts/loop.mts:916-926) resolves
-// its child-process target as the sibling file `dispatch.mts` next to
-// `import.meta.url` (`path.join(path.dirname(thisFile), "dispatch.mts")`).
-// In dev that sibling is `src/scripts/dispatch.mts`; in the dist bundle,
-// `dist/loop.js` has no `dist/dispatch.mts` (or `dispatch.js`) sibling --
-// `dispatch.mts` is not one of build-dist.mts's five bundled CLI entries --
-// so the spawned child fails with `error: Module not found
-// "<pluginRoot>/dist/dispatch.mts"` (verified by direct execution
-// 2026-11-08). Both `dispatch prepare` and `dispatch finalize` hit this;
-// listMarkdownCliEntrypoints' file+firstArg dedup (first arg is always
-// literally "dispatch") only surfaces one label for both call sites. Fixing
-// this needs a new bundled dist/dispatch.js entry in build-dist.mts plus a
-// runtime resolution change in loop.mts -- out of this slice's scope
-// (agents/*.md path strings + draining the agents-origin EXPECTED_FAIL
-// labels only); reported to the team lead rather than silently expanding
-// scope. Tracked for a follow-up FEAT-037 slice.
-const EXPECTED_FAIL = new Set<string>(["dist/loop.js dispatch prepare"]);
+// grep) made it visible for the first time, and it genuinely crashed:
+// loop.mts's `dispatch` subcommand resolved its child-process target as the
+// sibling file `dispatch.mts` next to `import.meta.url`, unconditionally.
+// In dev that sibling is `src/scripts/dispatch.mts`; under the dist bundle,
+// `dist/loop.js` had no `dispatch.mts` (or `dispatch.js`) sibling, so the
+// spawned child failed with `error: Module not found
+// "<pluginRoot>/dist/dispatch.mts"`. Both `dispatch prepare` and `dispatch
+// finalize` hit this, but listMarkdownCliEntrypoints' then-single-arg dedup
+// (first arg is always literally "dispatch") only surfaced one label for
+// both call sites -- a scanner gap review B of SLICE-56 flagged.
+//
+// FEAT-037/SLICE-59 (2026-11-09) closed both gaps: `src/scripts/dispatch.mts`
+// is now one of build-dist.mts's bundled CLI entries (-> `dist/dispatch.js`,
+// a committed sibling of `dist/loop.js`); loop.mts's dispatch short-circuit
+// resolves its sibling by thisFile's own extension (`dispatch.js` next to a
+// `.js` loop.mts, `dispatch.mts` next to a `.mts` one) instead of hardcoding
+// `.mts`; and listMarkdownCliEntrypoints dedupes on the file plus its first
+// TWO args, so `dispatch prepare` and `dispatch finalize` are now distinct
+// entries, each verified (direct execution) to fail only on their own
+// `--plan`/`--parent-branch`/`--run-id` argument-validation error, never on
+// a module-resolution error. EXPECTED_FAIL is empty: no known-broken entry
+// remains.
+const EXPECTED_FAIL = new Set<string>([]);
 
 function labelFor(entry: ShippedEntrypoint): string {
   return `${entry.file} ${entry.args.join(" ")}`.trim();
@@ -301,14 +311,23 @@ test("every shipped hook and CLI entry runs without node_modules (ratchet agains
   assert.deepEqual(newlyBroken, [], `newly broken: ${JSON.stringify(newlyBroken)}`);
   assert.deepEqual(nowPassing, [], `remove from EXPECTED_FAIL: ${JSON.stringify(nowPassing)}`);
 
-  // (c) Stay red while EXPECTED_FAIL is non-empty — this is the permanent
-  // consumer-install gate FEAT-022 intentionally leaves red until FEAT-026
-  // (self-contained bundles) and the later dist/ path rewrite clear it.
+  // (c) The ratchet has fully drained (FEAT-037/SLICE-55..59): this is now a
+  // permanent BLOCKING gate, not a designed-red placeholder. Assert both
+  // halves explicitly rather than relying only on newlyBroken/nowPassing
+  // being empty by construction — EXPECTED_FAIL itself must be the empty
+  // set, and zero entries may be observed as a module-resolution crash,
+  // full stop. A real regression in any shipped hook or CLI entry fails
+  // this test; EXPECTED_FAIL is not a place to hide one.
   assert.deepEqual(
     [...EXPECTED_FAIL].sort(),
     [],
-    `EXPECTED_FAIL is non-empty (${EXPECTED_FAIL.size} known-broken entries) -- ` +
-      "see FEAT-022/FEAT-026. This test is designed to stay red until those land."
+    `EXPECTED_FAIL must be empty -- FEAT-037's ratchet has fully drained; ` +
+      `found ${EXPECTED_FAIL.size} entries still declared`
+  );
+  assert.deepEqual(
+    [...observedCrashes].sort(),
+    [],
+    `module-resolution crash observed in: ${JSON.stringify([...observedCrashes].sort())}`
   );
 });
 

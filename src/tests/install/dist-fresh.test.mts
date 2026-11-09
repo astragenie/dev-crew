@@ -198,19 +198,34 @@ test("collectHookEntries against the real hooks/hooks.json returns every committ
   for (const src of entries) assert.ok(src.endsWith(".mts"), `non-.mts entry: ${src}`);
 });
 
-test("resolveEntries() produces the hook entries plus the five fixed CLI entries, no duplicates", async () => {
+// FEAT-037/SLICE-59: six fixed CLI entries, not five — `dispatch.mts` joined
+// the set alongside `loop.mts`. `loop.mts`'s `dispatch` subcommand spawns
+// `dispatch.mts` as a sibling child process; under the bundle, that sibling
+// has to be a bundled `dist/dispatch.js` too, or `bun dist/loop.js dispatch
+// ...` dies with a module-resolution error (no `dispatch.mts` next to
+// `dist/loop.js`). This list is data-driven off CLI_OUT_NAMES so a future
+// CLI entry addition only needs a change here, not a parallel literal list.
+test("resolveEntries() produces the hook entries plus the fixed CLI entries, no duplicates", async () => {
   const entries = await resolveEntries();
   const outs = entries.map((e) => e.out);
   assert.equal(new Set(outs).size, outs.length, "duplicate `out` path in resolved entries");
-  for (const cliOut of [
+  const expectedCliOuts = [
     "crew.js",
     "loop.js",
+    "dispatch.js",
     "report-to-pr.js",
     "prune-artifacts.js",
     "watch-tick.js"
-  ]) {
+  ];
+  for (const cliOut of expectedCliOuts) {
     assert.ok(outs.includes(cliOut), `missing CLI entry ${cliOut}`);
   }
+  const cliOuts = outs.filter((o) => !o.startsWith("hooks/"));
+  assert.equal(
+    cliOuts.length,
+    expectedCliOuts.length,
+    `expected exactly ${expectedCliOuts.length} CLI entries, found ${cliOuts.length}: ${JSON.stringify(cliOuts)}`
+  );
   const hookOuts = outs.filter((o) => o.startsWith("hooks/"));
   assert.ok(hookOuts.length >= 20, `expected >=20 hooks/*.js entries, found ${hookOuts.length}`);
 });
