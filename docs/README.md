@@ -50,3 +50,4 @@ slice.
 copies) live at repo root, not under `docs/` — they're install-time /
 runtime plugin surface consumed by adopter repos and by Claude Code's plugin
 loader, not reference documentation. See `AGENTS.md` § Structure.
+- `handover-2026-11-09.md` — where things stand after v1.2.0: state, how to run the loop, known sharp edges, release steps. Start here if you are new to the repo.
