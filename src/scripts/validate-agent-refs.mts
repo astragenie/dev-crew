@@ -68,6 +68,10 @@ import fs from "node:fs/promises";
 import type { Dirent } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  findSourceScriptPathFindings,
+  type SourceScriptPathFinding
+} from "./lib/source-script-path-rule.mjs";
 
 export interface AgentRefFinding {
   file: string;
@@ -245,6 +249,43 @@ async function walkMarkdown(dir: string): Promise<string[]> {
   return out;
 }
 
+// FEAT-037 SLICE-58 — sibling of validate-agents.mts's `no-source-script-path`
+// rule (which owns agents/*.md, excluding agents/3rdparty/). This covers the
+// rest of this plugin's shipped product surface: commands/*.md,
+// skills/**/SKILL.md (ONLY the skill manifest itself — skills/ also carries
+// many unrelated reference docs under references/ that are out of scope),
+// and templates/**. Matcher is shared with crew/scripts/validate-agents.mts
+// via src/scripts/lib/source-script-path-rule.mts — see that file for the
+// "invocation form" definition (fenced code block, or a line that is
+// entirely one inline-code span starting with bun/node/bunx or wrapping
+// `${CLAUDE_PLUGIN_ROOT}/`) and the crew/ duplication note.
+export interface SourceScriptPathRefFinding extends SourceScriptPathFinding {
+  file: string;
+}
+
+const SOURCE_SCRIPT_PATH_SCAN_TARGETS = ["commands", "templates"] as const;
+
+export async function findSourceScriptPathRefFindings(
+  repoRoot: string
+): Promise<SourceScriptPathRefFinding[]> {
+  const files: string[] = [];
+  for (const target of SOURCE_SCRIPT_PATH_SCAN_TARGETS) {
+    files.push(...(await walkMarkdown(path.join(repoRoot, target))));
+  }
+  const skillMarkdown = await walkMarkdown(path.join(repoRoot, "skills"));
+  files.push(...skillMarkdown.filter((f) => path.basename(f) === "SKILL.md"));
+
+  const findings: SourceScriptPathRefFinding[] = [];
+  for (const filePath of files) {
+    const label = path.relative(repoRoot, filePath).replace(/\\/g, "/");
+    const content = await fs.readFile(filePath, "utf8");
+    for (const finding of findSourceScriptPathFindings(content)) {
+      findings.push({ file: label, ...finding });
+    }
+  }
+  return findings;
+}
+
 interface KnownNames {
   runnerAgentNames: Set<string>;
   runnerCommandNames: Set<string>;
@@ -364,15 +405,36 @@ if (isMainEntry()) {
   // This script lives at src/scripts/ — repo root is two levels up.
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
   const result = await validateAgentRefs(repoRoot);
+  const sourceScriptPathFindings = await findSourceScriptPathRefFindings(repoRoot);
+  let failed = false;
   if (!result.ok) {
+    failed = true;
     console.error(
       `Agent-ref validation failed: ${result.findings.length} phantom dispatch reference(s)`
     );
     for (const f of result.findings) {
       console.error(`  - ${f.file}:${f.line}: "${f.token}" — ${f.detail}`);
     }
+  }
+  if (sourceScriptPathFindings.length > 0) {
+    failed = true;
+    console.error(
+      `no-source-script-path validation failed: ${sourceScriptPathFindings.length} ` +
+        "source-path invocation(s) in commands/skills/templates"
+    );
+    for (const f of sourceScriptPathFindings) {
+      console.error(
+        `  - ${f.file}:${f.line}: source-path invocation of "${f.path}" — use ` +
+          `bun "\${CLAUDE_PLUGIN_ROOT}/dist/<bundle>.js" instead (no-source-script-path)`
+      );
+    }
+  }
+  if (failed) {
     process.exitCode = 1;
   } else {
-    console.log("Agent-ref validation OK: no phantom crew:/runner: dispatch references found.");
+    console.log(
+      "Agent-ref validation OK: no phantom crew:/runner: dispatch references, " +
+        "no source-script-path regressions."
+    );
   }
 }

@@ -19,6 +19,7 @@ import { existsSync, readdirSync, readFileSync, type Dirent } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PEER_DISPATCH_ALLOWLIST } from "./lib/dispatch/peer-dispatch-allowlist.mjs";
+import { findSourceScriptPathFindings } from "./lib/source-script-path-rule.mjs";
 
 // P3 surface merge moved agents/ to the monorepo root (devcrew unification) —
 // see validate-workflows.mts's SURFACE_ROOT note for the same split.
@@ -590,6 +591,31 @@ function checkNoRelativeScriptPath(
   }
 }
 
+// FEAT-037 SLICE-58: a source-path invocation of one of the five legacy
+// script entry points (crew/scripts/crew.mts, src/scripts/loop.mts,
+// crew/scripts/report-to-pr.mts, crew/scripts/prune-artifacts.mts,
+// src/scripts/watch-tick.mts) must not creep back into agents/*.md now
+// that SLICE-55..58 rewrote every real invocation to the dist/ bundles —
+// a source path resolves @astragenie/*, zod and yaml from node_modules
+// and crashes in a consumer install (no node_modules there). Matcher is
+// shared with the commands/skills/templates sibling check in
+// src/scripts/validate-agent-refs.mts — see
+// ./lib/source-script-path-rule.mts for the "invocation form" definition
+// and the duplication note (crew-to-root import boundary).
+function checkNoSourceScriptPath(
+  text: string,
+  _fm: Record<string, string>,
+  label: string,
+  errors: string[]
+) {
+  for (const finding of findSourceScriptPathFindings(text)) {
+    errors.push(
+      `${label}:${finding.line}: source-path invocation of "${finding.path}" — use ` +
+        `bun "\${CLAUDE_PLUGIN_ROOT}/dist/<bundle>.js" instead (no-source-script-path)`
+    );
+  }
+}
+
 // FEAT-028: the four builder-tier agents that ship their own Report
 // contract must never publish (open a PR / push) before the dispatcher's
 // explicit review gate — that bypassed the ship boundary (audit #7 /
@@ -756,6 +782,7 @@ export async function validateAgents(agentsRoot = AGENTS_ROOT) {
     checkNoBacklogIds(text, fm, label, errors);
     checkNoLeadRef(text, fm, label, errors);
     checkNoRelativeScriptPath(text, fm, label, errors);
+    checkNoSourceScriptPath(text, fm, label, errors);
     checkNoPrereviewPublish(text, fm, label, errors);
     checkPeerDispatchSection(text, fm, label, errors);
     await checkUniversalsHash(text, fm, label, errors);
