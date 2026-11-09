@@ -1,22 +1,21 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-11-09T04:24:07.524Z",
+  "updatedAt": "2026-11-09T04:31:57.253Z",
   "currentRun": {
-    "title": "FEAT037 SLICE59: Drain consumer-smoke EXPECTED_FAIL to empty and assert the entry-count floor",
+    "title": "FEAT037 SLICE60: Record gate 42 as blocking in ci-gates and update the DEC-044 memory note",
     "goal": "W2.5 path rewrite: point every shipped slash-command and agent prompt at the dist/ bundles so the plugin runs from a marketplace install without node_modules. FEAT-026 shipped self-contained dist bundles (dist/crew.js, dist/loop.js, dist/hooks/*.js) and migrated hooks/hooks.json, but commands/*.md (91 refs) and agents/*.md (42 refs) still invoke crew/scripts/crew.mts and src/scripts/loop.mts, which resolve @astragenie/*, zod and yaml from node_modules and crash in a consumer repo. The consumer-i",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-11-09T00:33:45.735Z",
-    "updatedAt": "2026-11-09T04:24:07.524Z",
+    "startedAt": "2026-11-09T04:25:04.184Z",
+    "updatedAt": "2026-11-09T04:31:57.253Z",
     "next": "Begin implementation",
     "gates": {
       "review": {
-        "status": "passed",
-        "updatedAt": "2026-11-09T03:58:05.829Z",
-        "note": "Lite re-review of commit 9f2f3d58 (\"fix(SLICE-59): extract dispatch sibling helper (complexity); smoke classifier retries empty output once (review A/B)\").\n\n1. src/scripts/loop.mts: `runDispatchSibling(rawArgv)` is a faithful extraction of the prior inline block — same spawnSync argv array, same sibling-by-extension resolution (`.js` -> dispatch.js else dispatch.mts), same `shell: process.platform === \"win32\"`, same `process.exitCode = result.status ?? 1`, same early-return call site in main(). Confirmed via diff: logic is byte-for-byte moved, not altered. `bunx biome lint src/scripts/loop.mts --diagnostic-level=warn` now reports only two noExcessiveCognitiveComplexity violations (lines 2138/16, 2302/18) — main() at line 940 is no longer flagged, confirming the complexity fix worked.\n\n2. src/tests/install/consumer-smoke.test.mts: retry fires only when `run.classification === \"crash\" && run.exitCode !== 0 && emptyCombinedOutput`. Read `classifyRunResult`: exit 0 -> \"ok\"; signature match (MODULE_RESOLUTION_SIGNATURE_RE, e.g. \"Cannot find module\") -> \"crash\" with non-empty stderr/stdout (the signature text itself is the content), so `emptyCombinedOutput` is always false on a real module-resolution crash — it is never retried. Only the classifier's separate \"no message of any kind\" empty-output branch can satisfy all three retry conditions. EXPECTED_FAIL remains the empty set (unchanged, confirmed at line 139). Retry re-runs the identical spawn once via `spawnOnce()`; hard assertions and floors untouched.\n\n3. `bun src/scripts/build-dist.mts --check` → \"dist/ is up to date.\" dist/loop.js and dist/.build-info.json in the commit are consistent with source.\n\n4. `bun test src/tests/install/consumer-smoke.test.mts --timeout 300000` → 5 pass, 0 fail (126s). No crash classifications observed this run; all non-zero exits were arg-error (expected, config-less temp consumer repo).\n\nDecision: approved. No concerns found; the retry logic cannot mask a genuine module-resolution crash because that path never produces empty combined output.",
+        "status": "required",
+        "updatedAt": "2026-11-09T04:31:17.970Z",
+        "note": "SLICE-60 review (lite, docs): gate 42 blocking wording fact-checked against code.\n\nDecision: approved_with_notes\n\nVerified against code (all correct):\n- docs/ci-gates.md:227-238 gate 42 wording matches .github/workflows/ci.yml slow-tests job exactly: timeout --signal=KILL 720, max_attempts=2, serial (no --parallel), six path-ignore-patterns (auto-merge, synergy, integration, integrations, slice-complete, slice-start), \"N fail\" summary check even on exit 0, job-local pinned Bun install, crew/ deps installed.\n- src/tests/install/consumer-smoke.test.mts: EXPECTED_FAIL is `new Set<string>([])` (line 139); hard assertions newlyBroken/nowPassing both `[]` (lines 334-338); CLI floor >=42, hooks floor >=11 (lines 245-250) — matches docs.\n- DEC-044.md:44-46 Status section is additive only, decision text unchanged, `validate-adr-template.mts --strict` exits 0.\n- CLAUDE.md untouched (confirmed via `git show bee15bc9 --stat`); docs/memory.md's adjacent \"CI reusable workflow is vendored\" section and \"## CI gates\" heading have no contradiction.\n- SLICE-60.md AC-6 ticked with line-evidence (ci-gates.md 225-238, memory.md 103-118, DEC-044.md 44-46) — all three citations land on the correct content; scope bullets filled, no placeholders.\n- Gates run clean: generate-metrics-band --check, validate-content-length, validate-branding-scrub (hits only under .claude/worktrees), bun test src/tests/ci/docs-only.test.mts (12 pass), validate-adr-template --strict — all exit 0.\n\n[MEDIUM] docs/memory.md:110: claims the ratchet was \"6 as of FEAT-037/SLICE-59\" — wrong slice attribution. Per consumer-smoke.test.mts's own history comments (lines ~70-131), 6 was the count after SLICE-55 (agents-origin labels), which SLICE-56 then drained to 0 but simultaneously introduced ONE new real crash (the dispatch prepare/finalize module-resolution bug), leaving the ratchet at 1 — not 6 — going into SLICE-59, which then closed that last gap to 0. The true sequence is 49 (SLICE-47) -> 42 (SLICE-52) -> 6 (SLICE-55) -> 1 (SLICE-56) -> 0 (SLICE-59). The commit message's \"(49 → 42 → 6 → 0)\" summary has the same gap (missing the intermediate 1-entry state), but docs/memory.md's prose additionally misattributes the \"6\" to SLICE-59 specifically, which is incorrect. docs/ci-gates.md's gate 42 entry avoids this by not quoting the 6/1 intermediate counts at all, so it is not affected. Recommend a follow-up edit to docs/memory.md:103-118 inserting the SLICE-56 \"drained to 0 but introduced 1 new crash\" step and correcting \"6 as of FEAT-037/SLICE-59\" to \"6 as of SLICE-55\".\n\nArtifact: C:\\Users\\serge\\AppData\\Local\\Temp\\claude\\C--work-mega-devcrew\\3c4a84cd-1f65-44df-88f3-49bdbdc39dfc\\scratchpad\\slice60-review-summary.md",
         "reviewers": {
-          "A": "approved_with_notes",
-          "B": "approved"
+          "A": "approved_with_notes"
         },
         "required": [
           "A",
@@ -24,13 +23,9 @@
         ]
       },
       "validation": {
-        "status": "passed",
-        "updatedAt": "2026-11-09T04:24:07.524Z",
-        "note": "",
-        "validators": {
-          "verifier": "pass"
-        },
-        "required": []
+        "status": "skipped",
+        "updatedAt": "2026-11-09T04:31:57.253Z",
+        "note": "docs-only slice: every factual claim in ci-gates.md / memory.md / DEC-044 was fact-checked against ci.yml and consumer-smoke.test.mts in the review artifact 20261109T043117Z; no runnable behavior changed"
       },
       "deployment": {
         "dev": null,
@@ -42,13 +37,13 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261109T003345Z-run-brief-feat037-slice59-drain-consumer-smoke-expected-fail-to-empty-.md",
+      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261109T042504Z-run-brief-feat037-slice60-record-gate-42-as-blocking-in-ci-gates-and-u.md",
       "handoffs": [
-        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20261109T032607Z-handoff-slice-59-builder-handoff-expected-fail-drained-ratchet-is-a-.md"
+        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20261109T042802Z-handoff-slice-60-handoff-gate-42-recorded-as-blocking-dec-044-status.md"
       ],
-      "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261109T035805Z-review-result-slice-59-re-review-lite-helper-extraction-classifier-retry-9.md",
+      "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261109T043117Z-review-result-slice-60-review-lite-docs-gate-42-blocking-wording-fact-chec.md",
       "validationPlan": null,
-      "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261109T042407Z-validation-result-slice-59-validation-every-shipped-entry-runs-node-modules-fr.md",
+      "validationResult": null,
       "deploymentChecks": {
         "dev": null,
         "prod": null
@@ -57,6 +52,62 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT037 SLICE59: Drain consumer-smoke EXPECTED_FAIL to empty and assert the entry-count floor",
+      "goal": "W2.5 path rewrite: point every shipped slash-command and agent prompt at the dist/ bundles so the plugin runs from a marketplace install without node_modules. FEAT-026 shipped self-contained dist bundles (dist/crew.js, dist/loop.js, dist/hooks/*.js) and migrated hooks/hooks.json, but commands/*.md (91 refs) and agents/*.md (42 refs) still invoke crew/scripts/crew.mts and src/scripts/loop.mts, which resolve @astragenie/*, zod and yaml from node_modules and crash in a consumer repo. The consumer-i",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-11-09T00:33:45.735Z",
+      "updatedAt": "2026-11-09T04:24:07.524Z",
+      "completedAt": "2026-11-09T04:24:07.524Z",
+      "next": "Begin implementation",
+      "gates": {
+        "review": {
+          "status": "passed",
+          "updatedAt": "2026-11-09T03:58:05.829Z",
+          "note": "Lite re-review of commit 9f2f3d58 (\"fix(SLICE-59): extract dispatch sibling helper (complexity); smoke classifier retries empty output once (review A/B)\").\n\n1. src/scripts/loop.mts: `runDispatchSibling(rawArgv)` is a faithful extraction of the prior inline block — same spawnSync argv array, same sibling-by-extension resolution (`.js` -> dispatch.js else dispatch.mts), same `shell: process.platform === \"win32\"`, same `process.exitCode = result.status ?? 1`, same early-return call site in main(). Confirmed via diff: logic is byte-for-byte moved, not altered. `bunx biome lint src/scripts/loop.mts --diagnostic-level=warn` now reports only two noExcessiveCognitiveComplexity violations (lines 2138/16, 2302/18) — main() at line 940 is no longer flagged, confirming the complexity fix worked.\n\n2. src/tests/install/consumer-smoke.test.mts: retry fires only when `run.classification === \"crash\" && run.exitCode !== 0 && emptyCombinedOutput`. Read `classifyRunResult`: exit 0 -> \"ok\"; signature match (MODULE_RESOLUTION_SIGNATURE_RE, e.g. \"Cannot find module\") -> \"crash\" with non-empty stderr/stdout (the signature text itself is the content), so `emptyCombinedOutput` is always false on a real module-resolution crash — it is never retried. Only the classifier's separate \"no message of any kind\" empty-output branch can satisfy all three retry conditions. EXPECTED_FAIL remains the empty set (unchanged, confirmed at line 139). Retry re-runs the identical spawn once via `spawnOnce()`; hard assertions and floors untouched.\n\n3. `bun src/scripts/build-dist.mts --check` → \"dist/ is up to date.\" dist/loop.js and dist/.build-info.json in the commit are consistent with source.\n\n4. `bun test src/tests/install/consumer-smoke.test.mts --timeout 300000` → 5 pass, 0 fail (126s). No crash classifications observed this run; all non-zero exits were arg-error (expected, config-less temp consumer repo).\n\nDecision: approved. No concerns found; the retry logic cannot mask a genuine module-resolution crash because that path never produces empty combined output.",
+          "reviewers": {
+            "A": "approved_with_notes",
+            "B": "approved"
+          },
+          "required": [
+            "A",
+            "B"
+          ]
+        },
+        "validation": {
+          "status": "passed",
+          "updatedAt": "2026-11-09T04:24:07.524Z",
+          "note": "",
+          "validators": {
+            "verifier": "pass"
+          },
+          "required": []
+        },
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261109T003345Z-run-brief-feat037-slice59-drain-consumer-smoke-expected-fail-to-empty-.md",
+        "handoffs": [
+          "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20261109T032607Z-handoff-slice-59-builder-handoff-expected-fail-drained-ratchet-is-a-.md"
+        ],
+        "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261109T035805Z-review-result-slice-59-re-review-lite-helper-extraction-classifier-retry-9.md",
+        "validationPlan": null,
+        "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261109T042407Z-validation-result-slice-59-validation-every-shipped-entry-runs-node-modules-fr.md",
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT037 SLICE58: Add no-source-script-path validator rule for agents and commands",
       "goal": "W2.5 path rewrite: point every shipped slash-command and agent prompt at the dist/ bundles so the plugin runs from a marketplace install without node_modules. FEAT-026 shipped self-contained dist bundles (dist/crew.js, dist/loop.js, dist/hooks/*.js) and migrated hooks/hooks.json, but commands/*.md (91 refs) and agents/*.md (42 refs) still invoke crew/scripts/crew.mts and src/scripts/loop.mts, which resolve @astragenie/*, zod and yaml from node_modules and crash in a consumer repo. The consumer-i",
@@ -270,48 +321,6 @@
         "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\worktrees\\agent-a9ce58c806db416b7\\.claude\\artifacts\\crew\\reviews\\20261106T173939Z-review-result-slice-52-review-b-correctness-re-review-2041ce35.md",
         "validationPlan": null,
         "validationResult": "C:\\work\\mega\\devcrew\\.claude\\worktrees\\agent-a9ce58c806db416b7\\.claude\\artifacts\\crew\\validations\\20261106T174306Z-validation-result-slice-52-validation-dist-bundles-run-without-node-modules.md",
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT027 SLICE53: Implement FEAT-027",
-      "goal": "Audit T5: validation-skip is a recorded, config-gated decision; verifier waived only with consumer CI",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-11-06T05:19:30.372Z",
-      "updatedAt": "2026-11-06T05:19:30.372Z",
-      "completedAt": "2026-11-06T05:19:30.372Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": {
-          "status": "required",
-          "updatedAt": "2026-11-06T05:19:30.372Z",
-          "reviewers": {},
-          "required": [
-            "A",
-            "B"
-          ]
-        },
-        "validation": null,
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T051930Z-run-brief-feat027-slice53-implement-feat-027.md",
-        "handoffs": [],
-        "reviewResult": null,
-        "validationPlan": null,
-        "validationResult": null,
         "deploymentChecks": {
           "dev": null,
           "prod": null

@@ -1,7 +1,7 @@
 ---
 id: SLICE-60
 title: Record gate 42 as blocking in ci-gates and update the DEC-044 memory note
-status: pending
+status: completed
 feature: FEAT-037
 phase: null
 priority: P0
@@ -9,12 +9,13 @@ target_release: null
 requires_validation: true
 risk: high
 created: 2026-11-06
-updated: 2026-11-06
+updated: 2026-11-09
 effort_points: 1
 proposed_slice_id_suffix: -SLICE-6
 estimated_tokens: 60000
 tags: ["stack:typescript"]
 touches_files: [docs/ci-gates.md, docs/memory.md]
+completed_at: 2026-11-09
 ---
 # SLICE-60: Record gate 42 as blocking in ci-gates and update the DEC-044 memory note
 

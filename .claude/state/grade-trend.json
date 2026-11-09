@@ -1,16 +1,16 @@
 {
   "scores": [
     {
-      "sliceId": "SLICE-56",
-      "avg": 0.891
-    },
-    {
       "sliceId": "SLICE-58",
       "avg": 0.903
     },
     {
       "sliceId": "SLICE-59",
       "avg": 0.909
+    },
+    {
+      "sliceId": "SLICE-60",
+      "avg": 0.9
     }
   ],
   "consecutiveBelow": 0

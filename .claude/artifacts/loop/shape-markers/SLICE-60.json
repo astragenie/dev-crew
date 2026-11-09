@@ -1,0 +1,7 @@
+{
+  "sliceId": "SLICE-60",
+  "shape": "doc-update",
+  "rationale": "all changed files are docs/markdown",
+  "inlinePath": false,
+  "ts": "2026-11-09T04:25:04.341Z"
+}
