@@ -7,12 +7,104 @@ shipped under the name `loop`; from `devcrew` v1.0.0-rc.1 the merged
 
 ## [Unreleased]
 
-- **fix(hooks)**: ship `hooks.json` at `hooks/hooks.json` — the documented
-  discovery path; `.claude-plugin/hooks/` was never loaded. A live
-  two-plugin marker test (2026-11-05, CLI 2.1.270) proved Claude Code's
-  plugin loader only discovers `hooks/hooks.json`, meaning no devcrew hook
-  ran for any consumer on 1.1.0 (gate guard, pre-push gate,
-  guard-feat-dispatch, telemetry — all 38 entries). FEAT-033/SLICE-46.
+_Nothing yet._
+
+## [1.2.0] — 2026-11-09 — consumer installs actually work
+
+Every shipped hook and CLI entry now runs from a `node_modules`-free
+marketplace install, and the consumer-install smoke test that proves it is
+a blocking CI gate. Install guide rewritten for a second machine.
+
+### Fixed
+
+- **Hooks never loaded on 1.1.0.** `hooks.json` ships at `hooks/hooks.json`,
+  the only path Claude Code's plugin loader discovers; `.claude-plugin/hooks/`
+  was dead. A live two-plugin marker test (CLI 2.1.270) proved no devcrew
+  hook — gate guard, pre-push gate, guard-feat-dispatch, telemetry, all 38
+  entries — had ever run for a consumer. FEAT-033 / SLICE-46, DEC-040.
+- **Hooks and CLI entries crashed without `node_modules`.** Every shipped
+  entry point is now a self-contained `dist/` bundle (`dist/crew.js`,
+  `dist/loop.js`, `dist/hooks/*.js`, `dist/watch-tick.js`,
+  `dist/report-to-pr.js`, `dist/prune-artifacts.js`, `dist/dispatch.js`),
+  built by `src/scripts/build-dist.mts` and pinned to `.bun-version`;
+  `hooks.json` and every `commands/*.md`, `agents/*.md` (excluding
+  `3rdparty/`) and `skills/**/SKILL.md` invocation point at them. Claude
+  Code's auto-install of plugin `dependencies` was rejected as the fix —
+  devcrew's workspace lockfile, `crew/`'s own deps and `@astragenie/*`
+  registry auth make it ineligible. FEAT-026 / SLICE-52 (DEC-048),
+  FEAT-037 / SLICE-55..60.
+- **`dist/loop.js dispatch prepare|finalize` crashed** because `loop.mts`
+  spawned a sibling `dispatch.mts` that was never bundled; `dispatch.js` is
+  a bundle entry and the sibling resolves by the running file's extension.
+  FEAT-037 / SLICE-59.
+- **Wave planner ranked everything flat.** It read PM field names that
+  intake never writes; it now reads `pm-apply`'s names with the legacy
+  names as a logged fallback, and the risk pre-flight is live again.
+  FEAT-034 / SLICE-51, DEC-042.
+- **Cost reports told comfortable lies.** One shared honesty-guard helper
+  on every write path; the scan cursor holds only for `window_too_wide`
+  and refusals report the measured window. FEAT-025 / SLICE-50, DEC-045.
+
+### Changed
+
+- **Consumer-install smoke test is a blocking gate.**
+  `src/tests/install/consumer-smoke.test.mts` stages a `node_modules`-free
+  copy of the plugin and runs every shipped hook and CLI entry from it;
+  `EXPECTED_FAIL` is empty, the entry-count floor (≥42 CLI, ≥11 hook
+  entries) is asserted so a rewrite cannot go green by shrinking the list,
+  and module-resolution crashes are classified apart from a tool's own
+  argument errors. CI gate 42 is blocking, not designed-red. FEAT-022 /
+  SLICE-47 (DEC-044), FEAT-037 / SLICE-55, 59, 60.
+- **No source-script paths in product surface.** `validate-agents` (gate
+  31) and `validate-agent-refs` (gate 6) fail on any `crew/scripts/*.mts` or
+  `src/scripts/*.mts` invocation in `agents/`, `commands/`, `skills/` or
+  `templates/`, naming file and line. FEAT-037 / SLICE-58.
+- **Review and validation gates need explicit terminal verdicts.** Ladder
+  entries are slots counted by distinct approving `--reviewer` keys;
+  scaffolds never flip a gate. FEAT-024 / SLICE-49, DEC-043.
+- **Validation skip is a recorded, config-gated decision**, allowed only
+  when consumer CI is detected. FEAT-027 / SLICE-53, DEC-046.
+- **One builder report contract.** Marker-first final message; no
+  pre-review publish, no SendMessage; validator rules enforce it across the
+  four builders. FEAT-028 / SLICE-54, DEC-047.
+- **CI docs-only exemption treats prompts as code**; backlog files are CI
+  code. FEAT-023 / SLICE-48, DEC-041.
+- **CI runs again on the public repo.** `fast-gate` called a reusable
+  workflow in the private `astragenie/common` repo, which GitHub refuses from
+  a public caller ("workflow was not found", every run since the repo went
+  public failed at parse time with zero jobs); the workflow is vendored at
+  `.github/workflows/reusable-plugin-ci.yml`. Every job installs the
+  `.bun-version`-pinned Bun job-locally (the shared runner image had drifted
+  to 1.4.4, which broke `build-dist --check` and three telemetry tests), and
+  the test jobs install `crew/` deps so `build-dist --check` can bundle
+  `crew.mts`.
+- **Serial-run test isolation.** `cost-scan-cursor-honesty-guard.test.mts`
+  leaked a `mock.module` into every later file (Bun 1.3.14 keeps the mock
+  process-wide and ignores a restore that returns the original namespace
+  object); it now imports its subject through a cache-busted specifier and
+  restores with a spread snapshot.
+- **CI is one merged workflow of 43 gates** (`docs/ci-gates.md` is the
+  source of truth; 1–32 blocking fast-gate, 33–36 advisory, 37–41
+  tsc/biome, 42–43 test suites). Root test suite runs serial on CI with the
+  six known git-worktree-hanging suites quarantined as non-blocking.
+
+### Documentation
+
+- README § Install rewritten as a per-machine / per-repo guide:
+  prerequisites table (Claude Code ≥ 2.1.270, Bun, Node, POSIX `sh`, git,
+  optional `gh`), plugin install, method-layer install, update path, and a
+  clone-and-develop section. ADOPTION.md drops the two-plugin
+  (`crew@astra` + `loop@astra`) prerequisite — `crew` is vendored inside
+  `devcrew`.
+- Agent completion receipts: typed schema + SubagentStop lane table.
+  DEC-038.
+
+### Known issues
+
+- `slice close --force-close` ignores `--keep-feature-open` and rolls the
+  parent feature to `done/`; restore the feature file by hand until fixed.
+- `agents/*.md` prompts still write the `runner:start` CLAUDE.md marker;
+  the rename to `devcrew:start` lands with the P5 cutover (FEAT-006).
 
 ## [1.1.0] — 2026-08-20 — legacy dispatch tokens retired
 

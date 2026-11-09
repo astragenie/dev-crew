@@ -1,6 +1,6 @@
 {
   "name": "devcrew",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Unified engineering-OS plugin for Claude Code: a dispatcher-guided workflow with bounded specialist subagents (builders, reviewers, verifiers, architects), quality gates, and inspectable handoff artifacts, layered with a PM-triaged backlog, slice-scoped Given-When-Then specs, parallel-worktree wave dispatch, automated phase-gate quality + review + validation, and decision-grade retrospectives. Stack-agnostic; per-repo config selects test commands at phase boundaries.",
   "author": {
     "name": "astra"
