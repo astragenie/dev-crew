@@ -1,7 +1,7 @@
 ---
 id: SLICE-59
 title: Drain consumer-smoke EXPECTED_FAIL to empty and assert the entry-count floor
-status: pending
+status: completed
 feature: FEAT-037
 phase: null
 priority: P0
@@ -9,12 +9,14 @@ target_release: null
 requires_validation: true
 risk: high
 created: 2026-11-06
-updated: 2026-11-06
+updated: 2026-11-09
 effort_points: 2
 proposed_slice_id_suffix: -SLICE-5
 estimated_tokens: 100000
 tags: ["stack:typescript"]
 touches_files: [src/tests/install/consumer-smoke.test.mts]
+completed_at: 2026-11-09
+badges: [serial-reviewer-warning]
 ---
 # SLICE-59: Drain consumer-smoke EXPECTED_FAIL to empty and assert the entry-count floor
 
