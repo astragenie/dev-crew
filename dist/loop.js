@@ -41443,19 +41443,22 @@ async function runConfigSubcommand(argv) {
   console.error("usage: loop.mts config <get <dotted.path>|migrate-devcrew> [--repo PATH]");
   process.exitCode = 1;
 }
+async function runDispatchSibling(rawArgv) {
+  const { spawnSync: spawnSync3 } = await import("child_process");
+  const { fileURLToPath: fileURLToPath8 } = await import("url");
+  const thisFile = fileURLToPath8(import.meta.url);
+  const siblingName = thisFile.endsWith(".js") ? "dispatch.js" : "dispatch.mts";
+  const dispatchCli = path117.join(path117.dirname(thisFile), siblingName);
+  const result3 = spawnSync3("bun", [dispatchCli, ...rawArgv.slice(1)], {
+    stdio: "inherit",
+    shell: process.platform === "win32"
+  });
+  process.exitCode = result3.status ?? 1;
+}
 async function main() {
   const rawArgv = process.argv.slice(2);
   if (rawArgv[0] === "dispatch") {
-    const { spawnSync: spawnSync3 } = await import("child_process");
-    const { fileURLToPath: fileURLToPath8 } = await import("url");
-    const thisFile = fileURLToPath8(import.meta.url);
-    const siblingName = thisFile.endsWith(".js") ? "dispatch.js" : "dispatch.mts";
-    const dispatchCli = path117.join(path117.dirname(thisFile), siblingName);
-    const result3 = spawnSync3("bun", [dispatchCli, ...rawArgv.slice(1)], {
-      stdio: "inherit",
-      shell: process.platform === "win32"
-    });
-    process.exitCode = result3.status ?? 1;
+    await runDispatchSibling(rawArgv);
     return;
   }
   if (rawArgv[0] === "wave") {

@@ -274,19 +274,45 @@ test("every shipped hook and CLI entry runs without node_modules (ratchet agains
     const stdinData = entry.stdinFixture
       ? Buffer.from(await readFile(entry.stdinFixture))
       : Buffer.from("{}");
-    const proc = Bun.spawnSync(cmd, {
-      cwd: consumerRepo,
-      stdin: stdinData,
-      env: { ...process.env, CLAUDE_PLUGIN_ROOT: pluginCopy, CLAUDE_PROJECT_DIR: consumerRepo },
-      timeout: 30_000
-    });
-    const stderrText = proc.stderr ? Buffer.from(proc.stderr).toString("utf8") : "";
-    const stdoutText = proc.stdout ? Buffer.from(proc.stdout).toString("utf8") : "";
-    const classification = classifyRunResult({
-      exitCode: proc.exitCode,
-      stdout: stdoutText,
-      stderr: stderrText
-    });
+
+    const spawnOnce = () => {
+      const proc = Bun.spawnSync(cmd, {
+        cwd: consumerRepo,
+        stdin: stdinData,
+        env: { ...process.env, CLAUDE_PLUGIN_ROOT: pluginCopy, CLAUDE_PROJECT_DIR: consumerRepo },
+        timeout: 30_000
+      });
+      const stderrText = proc.stderr ? Buffer.from(proc.stderr).toString("utf8") : "";
+      const stdoutText = proc.stdout ? Buffer.from(proc.stdout).toString("utf8") : "";
+      return {
+        exitCode: proc.exitCode,
+        stdout: stdoutText,
+        stderr: stderrText,
+        classification: classifyRunResult({
+          exitCode: proc.exitCode,
+          stdout: stdoutText,
+          stderr: stderrText
+        })
+      };
+    };
+
+    let run = spawnOnce();
+    // Review B (SLICE-59): under parallel test load, a transiently empty
+    // stdout+stderr with a non-zero exit code (resource contention, not a
+    // real module-resolution failure) was observed flaking this suite ~1 in
+    // 4 runs — including on unrelated entries like log_event.sh
+    // session_start. classifyRunResult() only falls back to "crash" for
+    // empty output via its own "no message of any kind" branch, never via
+    // the module-resolution-signature branch, so re-running the exact same
+    // spawn once and keeping the retry's result is safe: a genuine
+    // module-resolution crash (signature match) is never retried, only the
+    // ambiguous "silently died, said nothing" case is given one more
+    // chance before being counted as a ratchet failure.
+    const emptyCombinedOutput = `${run.stderr}${run.stdout}`.trim().length === 0;
+    if (run.classification === "crash" && run.exitCode !== 0 && emptyCombinedOutput) {
+      run = spawnOnce();
+    }
+    const { stderr: stderrText, stdout: stdoutText, classification } = run;
     const { isObservedCrash } = evaluateEntryResult(label, classification, EXPECTED_FAIL);
     if (isObservedCrash) {
       observedCrashes.add(label);
