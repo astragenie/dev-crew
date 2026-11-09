@@ -41449,7 +41449,8 @@ async function main() {
     const { spawnSync: spawnSync3 } = await import("child_process");
     const { fileURLToPath: fileURLToPath8 } = await import("url");
     const thisFile = fileURLToPath8(import.meta.url);
-    const dispatchCli = path117.join(path117.dirname(thisFile), "dispatch.mts");
+    const siblingName = thisFile.endsWith(".js") ? "dispatch.js" : "dispatch.mts";
+    const dispatchCli = path117.join(path117.dirname(thisFile), siblingName);
     const result3 = spawnSync3("bun", [dispatchCli, ...rawArgv.slice(1)], {
       stdio: "inherit",
       shell: process.platform === "win32"
