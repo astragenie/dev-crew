@@ -107,9 +107,9 @@ design on `fix/audit-2026-11` 2026-11-06 through 2026-11-08.)
 shipped hook and CLI entry from a `node_modules`-free consumer copy. The
 `EXPECTED_FAIL` ratchet held entries that drained via FEAT-037: 49 at
 SLICE-47, 42 as of FEAT-026/SLICE-52 (hooks passed from committed `dist/`
-bundles), 6 as of FEAT-037/SLICE-59 (CLI entries rewritten across SLICE-55–59
-to point at `dist/` bundles instead of source scripts), then empty at
-SLICE-59's close. Do not quarantine it: the same ratchet fails loudly when a
+bundles), 6 after SLICE-55 (commands/ repointed to `dist/`), 1 after SLICE-56
+(agents/ repointed; one real `dist/loop.js dispatch` sibling crash surfaced),
+then empty at SLICE-59's close (dispatch.js bundled). Do not quarantine it: the same ratchet fails loudly when a
 listed entry starts passing (remove it from the set) or an unlisted one breaks
 (newly broken). The merge-blocking `gate` job depends only on `fast-gate`, so
 gate 42's red history did not block merges. Verified 2026-11-06 (validation
