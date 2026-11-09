@@ -1,7 +1,7 @@
 ---
 id: SLICE-58
 title: Add no-source-script-path validator rule for agents and commands
-status: pending
+status: completed
 feature: FEAT-037
 phase: null
 priority: P0
@@ -9,12 +9,14 @@ target_release: null
 requires_validation: true
 risk: high
 created: 2026-11-06
-updated: 2026-11-06
+updated: 2026-11-09
 effort_points: 2
 proposed_slice_id_suffix: -SLICE-4
 estimated_tokens: 100000
 tags: ["stack:typescript"]
 touches_files: [crew/scripts/validate-agents.mts]
+completed_at: 2026-11-09
+badges: [serial-reviewer-warning]
 ---
 # SLICE-58: Add no-source-script-path validator rule for agents and commands
 

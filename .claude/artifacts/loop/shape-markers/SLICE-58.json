@@ -1,0 +1,7 @@
+{
+  "sliceId": "SLICE-58",
+  "shape": "single-module-edit",
+  "rationale": "1 source file, small delta, no export change",
+  "inlinePath": false,
+  "ts": "2026-11-08T23:46:04.857Z"
+}

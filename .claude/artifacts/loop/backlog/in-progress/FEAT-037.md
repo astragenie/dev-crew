@@ -5,7 +5,7 @@ priority: P0
 category: feature
 target_release: null
 created: 2026-11-06
-updated: 2026-11-08
+updated: 2026-11-09
 depends_on: []
 slices: [SLICE-55, SLICE-56, SLICE-57, SLICE-58, SLICE-59, SLICE-60]
 derived_from: null
@@ -51,9 +51,9 @@ tags: ["stack:typescript", "area:plugin-surface", "concern:dist-path-migration"]
 needs_contract: false
 needs_ux: false
 started_at: 2026-11-06
-slices_complete: [SLICE-55, SLICE-57, SLICE-56]
+slices_complete: [SLICE-55, SLICE-57, SLICE-56, SLICE-58]
 force_closed: true
-slices_remaining_at_close: [SLICE-58, SLICE-59, SLICE-60]
+slices_remaining_at_close: [SLICE-59, SLICE-60]
 completed_at: 2026-11-08
 ---
 ## Description

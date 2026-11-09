@@ -1,19 +1,19 @@
 {
   "version": "1.0",
-  "updatedAt": "2026-11-08T23:44:41.169Z",
+  "updatedAt": "2026-11-09T00:32:29.557Z",
   "currentRun": {
-    "title": "FEAT037 SLICE56: Repoint agents/*.md invocations to dist/ bundles, excluding 3rdparty (53 refs, 19 files)",
+    "title": "FEAT037 SLICE58: Add no-source-script-path validator rule for agents and commands",
     "goal": "W2.5 path rewrite: point every shipped slash-command and agent prompt at the dist/ bundles so the plugin runs from a marketplace install without node_modules. FEAT-026 shipped self-contained dist bundles (dist/crew.js, dist/loop.js, dist/hooks/*.js) and migrated hooks/hooks.json, but commands/*.md (91 refs) and agents/*.md (42 refs) still invoke crew/scripts/crew.mts and src/scripts/loop.mts, which resolve @astragenie/*, zod and yaml from node_modules and crash in a consumer repo. The consumer-i",
     "mode": "autonomous",
     "status": "active",
-    "startedAt": "2026-11-08T23:10:56.259Z",
-    "updatedAt": "2026-11-08T23:44:41.169Z",
-    "next": "Follow-up slice (or SLICE-59/60) to: (1) add a bundled dist/dispatch.js entry in build-dist.mts and fix loop.mts's dispatch child-process path resolution so dist/loop.js dispatch stops crashing, then remove the remaining EXPECTED_FAIL entry; (2) SLICE-57 skills/, SLICE-58 validator rule, SLICE-60 docs proceed as planned.",
+    "startedAt": "2026-11-08T23:46:04.771Z",
+    "updatedAt": "2026-11-09T00:32:29.557Z",
+    "next": "Begin implementation",
     "gates": {
       "review": {
         "status": "passed",
-        "updatedAt": "2026-11-08T23:37:28.141Z",
-        "note": "SLICE-56 review B (correctness), commits 461bf617 + 5b186335 on ee8735a1.\n\nVerification performed independently (not trusting builder counts):\n- Baseline grep for crew/scripts/crew.mts|src/scripts/loop.mts|report-to-pr.mts|prune-artifacts.mts|watch-tick.mts in agents/ (excl. 3rdparty): 53 hits across 19 files at ee8735a1, 0 at HEAD. agents/3rdparty/ untouched (empty diff --stat).\n- Read full agents/ diff line by line: every changed line swaps only the script-path token (crew/scripts/crew.mts -> \"${CLAUDE_PLUGIN_ROOT}/dist/crew.js\", src/scripts/loop.mts -> \".../dist/loop.js\"); all flags/quoting/args byte-identical otherwise.\n- Scope: git diff --stat ee8735a1..HEAD touches only the 19 agents/*.md files, the consumer-smoke test, and crew artifacts/slice file. No commands/, skills/, templates/, docs/, CLAUDE.md, dist/, src/scripts/.\n- Ran src/tests/install/consumer-smoke.test.mts: 4 pass / 1 fail. EXPECTED_FAIL === [\"dist/loop.js dispatch prepare\"] exactly; newlyBroken=[] and nowPassing=[] both held (no assertion failure on those lines); failure is only the designed-red \"stay red while EXPECTED_FAIL non-empty\" assertion.\n- Reproduced independently from a clean temp dir with CLAUDE_PLUGIN_ROOT set: both `dispatch prepare` and `dispatch finalize` crash identically with `error: Module not found \".../dist/dispatch.mts\"` -- a genuine module-resolution error, not an argument error.\n- Investigated why only `prepare` appears in EXPECTED_FAIL: read src/scripts/lib/install/shipped-entrypoints.mts. listMarkdownCliEntrypoints dedups by `${file}::${firstArg}`; for agents/swarm.md both dispatch call sites have firstArg \"dispatch\" (prepare/finalize is args[1]), so the scanner silently drops the second occurrence (finalize) and only ever registers/runs \"dispatch prepare\". This dedup logic is pre-existing and untouched by this diff -- the slice's rewrite only made the quoted dist/loop.js dispatch line visible to CLI_LINE_RE for the first time (bare unquoted form was invisible before). The slice does not introduce or worsen any hiding of a crash; it is a pre-existing scanner blind spot that now also affects `finalize`, fully disclosed in the test's inline comment and in AC-1/AC-5 evidence and the builder handoff. Not a regression, but a real residual gap: `dispatch finalize`'s crash is currently untested and unratcheted.\n- The \"2 dependent assertion fixes\" (bun count 30->29, and asserting crew/scripts/crew.mts is now ABSENT from grouped.bun) are necessary consequences of the drain: independently confirmed commands/ has no remaining literal quoted invocations of the old paths (only two unrelated prose mentions), so crew.mts correctly has zero remaining producers of a bun entry.\n- Full suite: `bun test src/tests/ --parallel --timeout 60000` with the 6 agreed path-ignores: 3418 pass / 7 skip / 1 fail (the same designed-red consumer-smoke assertion). No other failures; did not need to rerun anything as a flake.\n- Slice file (SLICE_56_REPOINT-...) and handoff: ACs ticked with concrete evidence (grep counts, test run numbers, exact crash signature), no placeholder/\"bullet 1\" text, no leaked FORBIDDEN/RETURN task-scoped markers. Handoff explicitly reports an unrelated stray environment reminder it encountered and correctly ignored (matches what this review also observed independently).\n\nDecision: approved_with_notes.\nNote for follow-up (not a blocker for this slice's stated scope): `dist/loop.js dispatch finalize` crashes with the same module-resolution error as `prepare` but is invisible to the ratchet due to the pre-existing file+firstArg dedup in listMarkdownCliEntrypoints. Recommend the dedup key include the full args (or at minimum firstArg+secondArg) so finalize gets its own label and EXPECTED_FAIL entry when the follow-up dist/dispatch.js fix lands -- otherwise a future fix to `prepare` alone could leave `finalize` silently broken forever.",
+        "updatedAt": "2026-11-09T00:27:30.993Z",
+        "note": "# SLICE-58 lite re-review of commit 3da30080\n\nScope: verify the three matcher fixes requested by review A and B (fence-char\ntracking for ~~~ vs ``` without cross-closing, indented-code-block detection\nwith the same runner-prefix / plugin-root-wrap guard, bun.exe recognized as a\nrunner) in both twins, plus mirrored tests, test run, and lint.\n\n## Findings\n\n1. Twin identity: `diff src/scripts/lib/source-script-path-rule.mts\n   crew/scripts/lib/source-script-path-rule.mts` shows the two files are\n   identical except for the header comment block naming which copy is\n   canonical vs duplicate. No logic drift between twins.\n2. Fence tracking: `FENCE_RE` keys on fence char (`` ` `` or `~`), requires\n   3+ repeats, allows up to 3 leading spaces (CommonMark). `fenceChar` state\n   only closes on a matching character; a `~~~` inside an open ``` block\n   is treated as ordinary content and does not close the fence (confirmed by\n   both new tests \"a stray ~~~ inside an open \\`\\`\\` fence does not close it\").\n3. Indented-code branch (`INDENTED_CODE_RE`, 4+ spaces or tab) routes through\n   `scanIndentedCodeLine`, which calls the same `matchedPathInInvocationForm`\n   guard as the inline-code-span path — requires a runner prefix\n   (`bun`/`bun.exe`/`node`/`bunx` + whitespace) or the\n   `${CLAUDE_PLUGIN_ROOT}/` wrap immediately before the path. `bun.exe` is\n   now in `RUNNER_PREFIX_RE` (`bun(?:\\.exe)?`).\n4. False-positive check: because the indented branch reuses the same prefix\n   guard, a 4-space-indented list continuation that only mentions a path in\n   prose (no runner prefix) does not match — confirmed by inspection, no\n   regression test needed since the guard is identical to the pre-existing\n   inline-code-span logic already covered by prior tests.\n5. Tests mirror 1:1 across `src/tests/validate-source-script-path-refs.test.mts`\n   and `crew/tests/validate-agents-no-source-script-path.test.mts` (4 new\n   cases each: ~~~ fence, stray ~~~ inside ``` fence, 4-space indented bare\n   invocation, bun.exe invocation).\n\n## Verification run\n\n- `bun test src/tests/validate-source-script-path-refs.test.mts\n  crew/tests/validate-agents-no-source-script-path.test.mts` → 21 pass, 0\n  fail, 16 expect() calls.\n- `bunx biome lint` on all four touched files (both directories, each with\n  its own biome config) → clean, no fixes applied, no complexity warnings.\n\n## Decision\n\napproved_with_notes is not needed — all requested fixes are present, correct,\ntested, and green. Decision: **approved**.",
         "reviewers": {
           "A": "approved",
           "B": "approved_with_notes"
@@ -25,7 +25,7 @@
       },
       "validation": {
         "status": "passed",
-        "updatedAt": "2026-11-08T23:44:41.169Z",
+        "updatedAt": "2026-11-09T00:32:29.557Z",
         "note": "",
         "validators": {
           "verifier": "pass"
@@ -42,13 +42,13 @@
       "help": null
     },
     "artifacts": {
-      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261108T231056Z-run-brief-feat037-slice56-repoint-agents-md-invocations-to-dist-bundle.md",
+      "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261108T234604Z-run-brief-feat037-slice58-add-no-source-script-path-validator-rule-for.md",
       "handoffs": [
-        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20261108T233049Z-handoff-slice-56-builder-handoff-agents-md-repointed-to-dist-bundles.md"
+        "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20261109T000630Z-handoff-slice-58-builder-handoff-no-source-script-path-validator-rul.md"
       ],
-      "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261108T233728Z-review-result-slice-56-review-b-correctness-agents-repointed-to-dist-bundl.md",
+      "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261109T002730Z-review-result-slice-58-re-review-lite-matcher-gap-fixes-3da30080.md",
       "validationPlan": null,
-      "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261108T234441Z-validation-result-slice-56-validation-agents-invoke-dist-bundles-from-a-clean-.md",
+      "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261109T003229Z-validation-result-slice-58-validation-no-source-script-path-rule-fails-on-rein.md",
       "deploymentChecks": {
         "dev": null,
         "prod": null
@@ -57,6 +57,62 @@
     }
   },
   "recentRuns": [
+    {
+      "title": "FEAT037 SLICE56: Repoint agents/*.md invocations to dist/ bundles, excluding 3rdparty (53 refs, 19 files)",
+      "goal": "W2.5 path rewrite: point every shipped slash-command and agent prompt at the dist/ bundles so the plugin runs from a marketplace install without node_modules. FEAT-026 shipped self-contained dist bundles (dist/crew.js, dist/loop.js, dist/hooks/*.js) and migrated hooks/hooks.json, but commands/*.md (91 refs) and agents/*.md (42 refs) still invoke crew/scripts/crew.mts and src/scripts/loop.mts, which resolve @astragenie/*, zod and yaml from node_modules and crash in a consumer repo. The consumer-i",
+      "mode": "autonomous",
+      "status": "active",
+      "startedAt": "2026-11-08T23:10:56.259Z",
+      "updatedAt": "2026-11-08T23:44:41.169Z",
+      "completedAt": "2026-11-08T23:44:41.169Z",
+      "next": "Follow-up slice (or SLICE-59/60) to: (1) add a bundled dist/dispatch.js entry in build-dist.mts and fix loop.mts's dispatch child-process path resolution so dist/loop.js dispatch stops crashing, then remove the remaining EXPECTED_FAIL entry; (2) SLICE-57 skills/, SLICE-58 validator rule, SLICE-60 docs proceed as planned.",
+      "gates": {
+        "review": {
+          "status": "passed",
+          "updatedAt": "2026-11-08T23:37:28.141Z",
+          "note": "SLICE-56 review B (correctness), commits 461bf617 + 5b186335 on ee8735a1.\n\nVerification performed independently (not trusting builder counts):\n- Baseline grep for crew/scripts/crew.mts|src/scripts/loop.mts|report-to-pr.mts|prune-artifacts.mts|watch-tick.mts in agents/ (excl. 3rdparty): 53 hits across 19 files at ee8735a1, 0 at HEAD. agents/3rdparty/ untouched (empty diff --stat).\n- Read full agents/ diff line by line: every changed line swaps only the script-path token (crew/scripts/crew.mts -> \"${CLAUDE_PLUGIN_ROOT}/dist/crew.js\", src/scripts/loop.mts -> \".../dist/loop.js\"); all flags/quoting/args byte-identical otherwise.\n- Scope: git diff --stat ee8735a1..HEAD touches only the 19 agents/*.md files, the consumer-smoke test, and crew artifacts/slice file. No commands/, skills/, templates/, docs/, CLAUDE.md, dist/, src/scripts/.\n- Ran src/tests/install/consumer-smoke.test.mts: 4 pass / 1 fail. EXPECTED_FAIL === [\"dist/loop.js dispatch prepare\"] exactly; newlyBroken=[] and nowPassing=[] both held (no assertion failure on those lines); failure is only the designed-red \"stay red while EXPECTED_FAIL non-empty\" assertion.\n- Reproduced independently from a clean temp dir with CLAUDE_PLUGIN_ROOT set: both `dispatch prepare` and `dispatch finalize` crash identically with `error: Module not found \".../dist/dispatch.mts\"` -- a genuine module-resolution error, not an argument error.\n- Investigated why only `prepare` appears in EXPECTED_FAIL: read src/scripts/lib/install/shipped-entrypoints.mts. listMarkdownCliEntrypoints dedups by `${file}::${firstArg}`; for agents/swarm.md both dispatch call sites have firstArg \"dispatch\" (prepare/finalize is args[1]), so the scanner silently drops the second occurrence (finalize) and only ever registers/runs \"dispatch prepare\". This dedup logic is pre-existing and untouched by this diff -- the slice's rewrite only made the quoted dist/loop.js dispatch line visible to CLI_LINE_RE for the first time (bare unquoted form was invisible before). The slice does not introduce or worsen any hiding of a crash; it is a pre-existing scanner blind spot that now also affects `finalize`, fully disclosed in the test's inline comment and in AC-1/AC-5 evidence and the builder handoff. Not a regression, but a real residual gap: `dispatch finalize`'s crash is currently untested and unratcheted.\n- The \"2 dependent assertion fixes\" (bun count 30->29, and asserting crew/scripts/crew.mts is now ABSENT from grouped.bun) are necessary consequences of the drain: independently confirmed commands/ has no remaining literal quoted invocations of the old paths (only two unrelated prose mentions), so crew.mts correctly has zero remaining producers of a bun entry.\n- Full suite: `bun test src/tests/ --parallel --timeout 60000` with the 6 agreed path-ignores: 3418 pass / 7 skip / 1 fail (the same designed-red consumer-smoke assertion). No other failures; did not need to rerun anything as a flake.\n- Slice file (SLICE_56_REPOINT-...) and handoff: ACs ticked with concrete evidence (grep counts, test run numbers, exact crash signature), no placeholder/\"bullet 1\" text, no leaked FORBIDDEN/RETURN task-scoped markers. Handoff explicitly reports an unrelated stray environment reminder it encountered and correctly ignored (matches what this review also observed independently).\n\nDecision: approved_with_notes.\nNote for follow-up (not a blocker for this slice's stated scope): `dist/loop.js dispatch finalize` crashes with the same module-resolution error as `prepare` but is invisible to the ratchet due to the pre-existing file+firstArg dedup in listMarkdownCliEntrypoints. Recommend the dedup key include the full args (or at minimum firstArg+secondArg) so finalize gets its own label and EXPECTED_FAIL entry when the follow-up dist/dispatch.js fix lands -- otherwise a future fix to `prepare` alone could leave `finalize` silently broken forever.",
+          "reviewers": {
+            "A": "approved",
+            "B": "approved_with_notes"
+          },
+          "required": [
+            "A",
+            "B"
+          ]
+        },
+        "validation": {
+          "status": "passed",
+          "updatedAt": "2026-11-08T23:44:41.169Z",
+          "note": "",
+          "validators": {
+            "verifier": "pass"
+          },
+          "required": []
+        },
+        "deployment": {
+          "dev": null,
+          "prod": null
+        },
+        "blocked": null,
+        "escalation": null,
+        "incident": null,
+        "help": null
+      },
+      "artifacts": {
+        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261108T231056Z-run-brief-feat037-slice56-repoint-agents-md-invocations-to-dist-bundle.md",
+        "handoffs": [
+          "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\handoffs\\20261108T233049Z-handoff-slice-56-builder-handoff-agents-md-repointed-to-dist-bundles.md"
+        ],
+        "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261108T233728Z-review-result-slice-56-review-b-correctness-agents-repointed-to-dist-bundl.md",
+        "validationPlan": null,
+        "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261108T234441Z-validation-result-slice-56-validation-agents-invoke-dist-bundles-from-a-clean-.md",
+        "deploymentChecks": {
+          "dev": null,
+          "prod": null
+        },
+        "finalSynthesis": null
+      }
+    },
     {
       "title": "FEAT037 SLICE55: Repoint commands/*.md invocations to dist/ bundles (135 refs, 31 files)",
       "goal": "W2.5 path rewrite: point every shipped slash-command and agent prompt at the dist/ bundles so the plugin runs from a marketplace install without node_modules. FEAT-026 shipped self-contained dist bundles (dist/crew.js, dist/loop.js, dist/hooks/*.js) and migrated hooks/hooks.json, but commands/*.md (91 refs) and agents/*.md (42 refs) still invoke crew/scripts/crew.mts and src/scripts/loop.mts, which resolve @astragenie/*, zod and yaml from node_modules and crash in a consumer repo. The consumer-i",
@@ -242,60 +298,6 @@
         "reviewResult": null,
         "validationPlan": null,
         "validationResult": null,
-        "deploymentChecks": {
-          "dev": null,
-          "prod": null
-        },
-        "finalSynthesis": null
-      }
-    },
-    {
-      "title": "FEAT025 SLICE50: Implement FEAT-025",
-      "goal": "Audit T9: telemetry honesty for cost reports, pricing, grades, and bundle-safe data files",
-      "mode": "autonomous",
-      "status": "active",
-      "startedAt": "2026-11-06T04:12:02.256Z",
-      "updatedAt": "2026-11-06T04:33:16.967Z",
-      "completedAt": "2026-11-06T04:33:16.967Z",
-      "next": "Begin implementation",
-      "gates": {
-        "review": {
-          "status": "passed",
-          "updatedAt": "2026-11-06T04:33:16.967Z",
-          "note": "SLICE-50 / FEAT-025 review B (correctness) — re-verification after commit\n58dcfb62 — APPROVED WITH NOTES.\n\nThe prior BLOCKER is fixed. 58dcfb62 extracts\n`crew/scripts/lib/cost-hygiene/cost-report-guard.mts`\n(`evaluateCostReportGuard`: the three AC-1 refusals + run_id resolution in\none call) and wires it into both `emit-cost-report.mts`'s\n`maybeEmitCostReport` and `cost-slice-handler.mts`'s `costSliceHandler` —\nthe latter is what `src/scripts/lib/slice-linker/crew-bridge.mts` actually\ncalls for this repo's own autonomous-loop slice closes. Four new tests\ndrive `costSliceHandler` directly (zero sessions, wide window, run_id\nstamped, duplicate refusal) and all pass; 33/33 tests green across the\nthree crew cost-report test files (up from 29); both `crew/tsconfig.json`\nand root `tsconfig.test.json` typecheck clean.\n\nThe `guard.refused === true` explicit-equality check (instead of a bare\n`if (guard.refused)`) is the right fix, not a workaround. I reproduced the\nnarrowing failure in isolation: under `strictNullChecks: false` (what\n`tsconfig.test.json` sets, and which sweeps in `cost-slice-handler.mts`\ntransitively via `crew-bridge.mts`), a bare boolean-property check on a\n`{refused:false;runId}|{refused:true;reason}` union does NOT narrow —\n`guard.runId` is a compile error afterward — while `=== true` narrows\ncorrectly under both the strict and loose configs. Confirmed empirically,\nnot just asserted.\n\nAC-2/AC-3 (pricing honesty) and AC-4 (grade-template-unfilled rejection),\napproved in my prior review, are untouched by this commit (it only touches\ncost-report-guard.mts, cost-slice-handler.mts, emit-cost-report.mts, and\nthe one test file) and remain correct. The FEAT-025 body's stale\n`crew/scripts/lib/cost-advise/decide.mts` path citation (real path:\n`crew/scripts/lib/cost-hygiene/decide.mts`) is still present and still\nworth a one-line fix next touch; `docs/memory.md` does not repeat it, so\nno memory fix is needed.\n\nOne new, real finding, raised as a note rather than a second blocker: in\n`src/scripts/lib/slice-linker/crew-bridge.mts`'s `tryWriteCostReport`\n(line 294), the per-slice scan cursor advances whenever\n`!report?.error` — and a `{written:false, reason}` refusal has no `.error`\nkey, so the cursor advances past a refused window exactly as if the report\nhad been written. For `duplicate run_id` this is harmless (idempotent —\nthe matching prior write already advanced the cursor correctly). For\n`sessions_scanned_zero` it's benign (nothing happened in that span, so\nthere is nothing to lose by moving past it). For `window_too_wide` it is\na real regression against the comment two lines above it (\"a failed\ninvocation leaves the window untouched so the next attempt retries...\ninstead of silently skipping it\") — the one case AC-1 built specifically\nto flag a suspect span for operator attention now gets silently and\npermanently skipped by the cursor instead. This is newly *reachable* only\nbecause of the fix just reviewed (before 58dcfb62, `costSliceHandler`\ncould never return `written:false` at all, so this line never saw a\nrefusal). My call: this is an in-scope defect, not a follow-up FEAT — it's\na direct, foreseeable side effect of the exact change under review, in a\nsibling file of the same cost-reporting flow, and the fix is small\n(gate the cursor advance on `report?.written !== false`, or narrowly on\n`report?.reason !== \"window_too_wide\"` if `sessions_scanned_zero`'s\nauto-retry-by-growing-window behavior is wanted deliberately). I'd want it\nfixed before calling FEAT-025 closed, but I'm not blocking THIS review on\nit since it sits outside the four stated ACs and outside the files this\nslice touched — approving with that note so it gets picked up explicitly\nrather than silently dropped.",
-          "reviewers": {
-            "A": "approved",
-            "B": "approved_with_notes"
-          },
-          "required": [
-            "A",
-            "B"
-          ]
-        },
-        "validation": {
-          "status": "passed",
-          "updatedAt": "2026-11-06T04:32:35.296Z",
-          "note": "SLICE-50 / FEAT-025 telemetry-honesty RE-VALIDATION, after commit\n58dcfb62 (\"fix(SLICE-50): cost-report honesty guards + run_id on the loop\nclose path (review B blocker)\").\n\nDecision: PASS.\n\nThe gap this validation and reviewer B both independently found in the\nfirst pass -- AC-1's three refusal checks (zero-sessions, wide-window,\nduplicate-run_id) and the run_id field existing only on the interactive\ncrew write-final-synthesis path, never on the real /runner:slice complete\nclose path (crew-bridge.mts -> costSliceHandler) -- is now closed. A\nshared crew/scripts/lib/cost-hygiene/cost-report-guard.mts module backs\nboth call sites. Re-driving the real costSliceHandler directly confirms\nall three refusals now fire correctly on the production path, and a\nsuccessful write now carries a run_id frontmatter line (confirmed by\nreading the written file directly: run_id: \"revalidate-3\").\n\nThe TypeScript narrowing regression flagged in the first pass (root\ntsconfig failing to narrow a bare \"if (guard.refused)\" discriminated\nunion under strict:false) is also resolved -- both call sites now use the\nexplicit \"guard.refused === true\" form. bun run typecheck and\nbunx tsc -p crew/tsconfig.json --noEmit both report rc 0 with zero\nerrors.\n\ncd crew && bun test tests/cost-report-honesty.test.mts\ntests/cost-report-emission.test.mts tests/pricing.test.mts -> 33 pass,\n0 fail, 87 expect() calls (up from 29/0/73 before this fix -- the four\nnew cases drive costSliceHandler directly).\n\nTwo things to flag, neither of which changes the PASS verdict for\nSLICE-50's four stated ACs:\n\n1. Aggregate-mode writes (cost-report-aggregate, written when\n   aggregateAll:true finds more than one active source project) are\n   confirmed STILL UNGATED -- no run_id, no zero-sessions check, no\n   duplicate check -- because evaluateCostReportGuard is only called once,\n   before the slice write, and the aggregate branch never calls it\n   independently. This only matters once the slice guard has already\n   passed (a refused slice guard returns early and the aggregate branch\n   is never reached), so the exposure is narrower than AC-1's wording\n   might suggest, but it is a real, confirmed gap worth a follow-up note\n   if aggregate honesty is ever in scope.\n\n2. A genuine data-loss bug, found while answering the cursor question:\n   crew-bridge.mts's tryWriteCostReport advances the per-slice scan\n   cursor whenever \"!report?.error\", and all three AC-1 refusals return\n   \"{written:false, reason}\" with no .error key -- so the cursor advances\n   on every refusal, not just real failures. For sessions_scanned_zero\n   and duplicate run_id this is harmless (nothing real was lost either\n   way). For window_too_wide it is NOT harmless: that refusal fires\n   specifically when real session cost activity (sessionsScanned > 0)\n   exists in a window too wide to trust, and advancing the cursor past it\n   anyway means that real, unreported activity is permanently skipped --\n   the next close starts scanning from \"now,\" not from the original\n   stale start, so the skipped span is never retried and never appears\n   in any cost report. This is a distinct bug from anything FEAT-025's\n   ACs cover (the cursor mechanism predates FEAT-025, via FEAT-268), and\n   is not something I am fixing as part of this validation, but it is a\n   real finding worth a follow-up ticket: skip the cursor advance\n   specifically when reason === \"window_too_wide\".",
-          "validators": {
-            "verifier": "pass"
-          },
-          "required": []
-        },
-        "deployment": {
-          "dev": null,
-          "prod": null
-        },
-        "blocked": null,
-        "escalation": null,
-        "incident": null,
-        "help": null
-      },
-      "artifacts": {
-        "runBrief": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\runs\\20261106T041202Z-run-brief-feat025-slice50-implement-feat-025.md",
-        "handoffs": [],
-        "reviewResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\reviews\\20261106T043316Z-review-result-slice-50-review-b-correctness.md",
-        "validationPlan": null,
-        "validationResult": "C:\\work\\mega\\devcrew\\.claude\\artifacts\\crew\\validations\\20261106T043235Z-validation-result-slice-50-re-validation-cost-guards-on-both-paths.md",
         "deploymentChecks": {
           "dev": null,
           "prod": null
