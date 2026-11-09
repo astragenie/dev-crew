@@ -224,22 +224,20 @@ every push/PR):**
     mode) — matches `crew/package.json`'s own `format:check` script.
 42. `bun test src/tests/ --parallel --timeout 60000` (root suite, minus the
     six known git-worktree-hanging suites — see "Job structure" below).
-    **Designed-red exception (FEAT-022 → W2.5):**
+    **Blocking since FEAT-037 (2026-11-09):**
     `src/tests/install/consumer-smoke.test.mts` asserts that every shipped
-    hook and CLI entry runs from a `node_modules`-free consumer copy. It is
-    deliberately RED while its `EXPECTED_FAIL` ratchet is non-empty. FEAT-026
-    (SLICE-52) shrinks the ratchet from 49 entries (SLICE-47) down to the 42
-    CLI entries sourced from `commands/*.md`/`agents/*.md` literal
-    invocations — every HOOK entry now runs self-contained from `dist/`. It
-    does not go fully green yet: the CLI entries still resolve
-    `@astragenie/*`/`zod`/`yaml` from `node_modules` until W2.5 (the serial
-    `crew.mts`/`loop.mts`/etc. path-to-`dist/` rewrite across `commands/*.md`
-    + `agents/*.md`, scheduled right after wave 2) clears them too. So gate
-    42 (and CI's `slow-tests`) are expected red on `fix/audit-2026-11` until
-    W2.5 lands; the required `gate` job depends only on `fast-gate`, so
-    merges are unaffected. The test is NOT quarantined on purpose — the
-    ratchet also fails loudly if a listed entry starts passing (remove it
-    from the set) or an unlisted one breaks.
+    hook and CLI entry runs from a `node_modules`-free consumer copy. It was
+    RED while its `EXPECTED_FAIL` ratchet held entries: 49 at SLICE-47, 42 as
+    of FEAT-026/SLICE-52 (every HOOK entry now runs from `dist/` bundles; the
+    42 CLI entries remained RED because they still resolved `@astragenie/*`,
+    `zod`, `yaml` from `node_modules`). FEAT-037 drained the ratchet across
+    SLICE-55 through SLICE-59 by rewriting all shipped CLI and hook invocations
+    to point at `dist/` bundles instead of source scripts — the ratchet is now
+    empty and the gate is BLOCKING. Job-level retry policy: 2 attempts, each
+    720s hard timeout (KILL signal), serial (no --parallel) with six
+    git-worktree-hanging suites excluded. The suite checks both process exit
+    code and for "N fail" in the printed summary line before treating a run as
+    green.
 43. `cd crew && bun test --timeout 60000 tests/ --parallel` (crew suite).
     SLICE-10 (FEAT-004 P1) already proved N≥20 consecutive green
     `--parallel` runs on this tree, so this runs unsharded and
@@ -255,11 +253,11 @@ every push/PR):**
   copied from `astragenie/common@v1` on 2026-11-08: GitHub refuses to resolve a
   reusable workflow in a private repo from a public caller ("workflow was not
   found", zero jobs), and `dev-crew` is public. Keep it in sync by hand.
-- **`slow-tests`** runs gate 42 (root suite, retried once on a 480s
-  per-attempt timeout) — kept as its own job (not the reusable-workflow
-  wrapper) because it needs a job-level timeout the reusable workflow's
-  fixed 30-minute limit can't give it, mirroring runner-plugin's original
-  design (astragenie/runner-plugin#355).
+- **`slow-tests`** runs gate 42 (root suite, 2 attempts with 720s per-attempt
+  timeout) — kept as its own job (not the reusable-workflow wrapper)
+  because it needs a job-level timeout the reusable workflow's fixed
+  30-minute limit can't give it, mirroring runner-plugin's original design
+  (astragenie/runner-plugin#355).
 - **`crew-tests`** runs gate 43.
 - **`worktree-quarantine`** runs the six suites gate 42 excludes
   (`auto-merge`, `synergy`, `integration`, `integrations`,

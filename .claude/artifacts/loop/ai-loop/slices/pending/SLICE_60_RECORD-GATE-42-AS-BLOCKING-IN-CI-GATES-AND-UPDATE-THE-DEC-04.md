@@ -26,12 +26,13 @@ W2.5 path rewrite: point every shipped slash-command and agent prompt at the dis
 
 ## In scope
 
-- bullet 1
-- bullet 2
+- Update docs/ci-gates.md gate 42 entry to record it as BLOCKING (not designed-red) with the runner retry policy (2 attempts, 720s per-attempt, serial, 6 suites excluded)
+- Update docs/memory.md DEC-044 note to record the ratchet drain (49 → 42 → 6 → 0 across slices) and blocking status
+- Add status note to DEC-044.md recording the drain date and gate 42 transition
 
 ## Out of scope
 
-- bullet 1
+- Implementation of path-rewrites (completed in SLICE-55 through SLICE-59)
 
 ## Acceptance criteria
 
@@ -42,7 +43,8 @@ W2.5 path rewrite: point every shipped slash-command and agent prompt at the dis
 - [ ] AC-3: Given commands/, agents/ excluding agents/3rdparty/, skills/ and templates/, When each is grepped for `crew/scripts/crew.mts`, `src/scripts/loop.mts`, `crew/scripts/report-to-pr.mts`, `crew/scripts/prune-artifacts.mts` and `src/scripts/watch-tick.mts`, Then zero occurrences remain outside an explicit allowlist covering the build-dist.mts entry list, the validator sources and the test files -- measured against the roughly 207 occurrences across 57 files counted on 2026-11-06.
 - [ ] AC-4: Given an invalid product-surface file that reintroduces `bun crew/scripts/crew.mts audit --repo "$PWD"` into commands/ or agents/, When the new `no-source-script-path` rule runs via crew/scripts/validate-agents.mts and its commands/*.md sibling check, Then the validator exits non-zero and its output names the offending file and line number.
 - [ ] AC-5: Given `bun "${CLAUDE_PLUGIN_ROOT}/dist/crew.js" audit --repo "$PWD"` and the equivalent dist/loop.js invocation, When each is run from a working directory outside the plugin tree with CLAUDE_PLUGIN_ROOT set and no node_modules present anywhere on the resolution path, Then each exits 0 or with its own argument-validation error, and never with a module-resolution error -- pinning SLICE-52's lesson that a bundle is only self-contained once the shipped artifact has been run from a clean directory.
-- [ ] AC-6: Given docs/ci-gates.md and docs/memory.md, When gate 42 is described in each, Then both record it as blocking rather than designed-red, docs/ci-gates.md states the runner retry policy for the staged suite, and the DEC-044 note in docs/memory.md (currently at lines 92-93, recording 42 held entries as of FEAT-026/SLICE-52) is updated to record that the ratchet drained in FEAT-037.
+- [x] AC-6: Given docs/ci-gates.md and docs/memory.md, When gate 42 is described in each, Then both record it as blocking rather than designed-red, docs/ci-gates.md states the runner retry policy for the staged suite, and the DEC-044 note in docs/memory.md (currently at lines 92-93, recording 42 held entries as of FEAT-026/SLICE-52) is updated to record that the ratchet drained in FEAT-037.
+  - **Evidence:** docs/ci-gates.md lines 225–238 record gate 42 as BLOCKING with retry policy (2 attempts, 720s per-attempt timeout, serial with 6 suites excluded). docs/memory.md lines 103–118 record gate 42 as BLOCKING with the drain history (49 → 42 → 6 → 0) and date transition. DEC-044.md lines 44–46 add a Status 2026-11-09 note confirming the ratchet drained in FEAT-037/SLICE-55–59 and gate 42 is now BLOCKING.
 - [ ] AC-7: Given the branch after all slices land, When `bun run validate:manifests`, `bun ./src/scripts/validate-agent-refs.mts`, `bun ./src/scripts/validate-content-length.mts`, `bun ./src/scripts/validate-repo-boundary.mts`, `bun ./src/scripts/generate-metrics-band.mts --check`, `bun src/scripts/build-dist.mts --check`, `bun crew/scripts/validate-agents.mts` and both test suites run, Then all exit 0 apart from the six suites gate 42 already excludes by configuration.
 
 ## Done When

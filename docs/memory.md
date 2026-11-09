@@ -100,21 +100,22 @@ empty by design.
 
 Full per-gate rationale: `docs/ci-gates.md`.
 
-**Gate 42 is red by design on `fix/audit-2026-11` (2026-11-06).** (Was gate
-41 before FEAT-026/SLICE-52 inserted gate 21, shifting every later gate +1.)
+**Gate 42 is BLOCKING (as of FEAT-037, 2026-11-09).** (Was gate 41 before
+FEAT-026/SLICE-52 inserted gate 21, shifting every later gate +1; was red by
+design on `fix/audit-2026-11` 2026-11-06 through 2026-11-08.)
 `src/tests/install/consumer-smoke.test.mts` (FEAT-022 / SLICE-47) runs every
-shipped hook and CLI entry from a `node_modules`-free consumer copy and stays
-RED while its `EXPECTED_FAIL` ratchet holds entries — 49 at SLICE-47, 42 as
-of FEAT-026/SLICE-52 (every HOOK entry now passes from the committed
-`dist/` bundles; the remaining 42 are CLI entries sourced from
-`commands/*.md`/`agents/*.md` literal invocations, which still resolve
-`@astragenie/*`/`zod`/`yaml` from `node_modules` until the serial W2.5
-path-rewrite lands). Do not quarantine it: the same ratchet fails loudly
-when a listed entry starts passing or an unlisted one breaks. The
-merge-blocking `gate` job depends only on `fast-gate`, so this does not
-block merges. Verified 2026-11-06 (validation artifact
-`20261106T040313Z-validation-result-slice-47-…`): the failure is the designed
-assertion only, and the staged copy contains no `node_modules` at any depth.
+shipped hook and CLI entry from a `node_modules`-free consumer copy. The
+`EXPECTED_FAIL` ratchet held entries that drained via FEAT-037: 49 at
+SLICE-47, 42 as of FEAT-026/SLICE-52 (hooks passed from committed `dist/`
+bundles), 6 as of FEAT-037/SLICE-59 (CLI entries rewritten across SLICE-55–59
+to point at `dist/` bundles instead of source scripts), then empty at
+SLICE-59's close. Do not quarantine it: the same ratchet fails loudly when a
+listed entry starts passing (remove it from the set) or an unlisted one breaks
+(newly broken). The merge-blocking `gate` job depends only on `fast-gate`, so
+gate 42's red history did not block merges. Verified 2026-11-06 (validation
+artifact `20261106T040313Z-validation-result-slice-47-…`): the failure was the
+designed assertion only, and the staged copy contained no `node_modules` at
+any depth.
 
 **FEAT-026 alternative rejected (dist/ bundling vs. auto-installed deps).**
 Claude Code auto-installs a plugin-root `dependencies` block for
